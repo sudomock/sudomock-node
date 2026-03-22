@@ -2,14 +2,15 @@
   "name": "sudomock",
   "version": "1.0.0",
   "description": "Official Node.js/TypeScript SDK for the SudoMock API - mockup generation from PSD files",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -46,7 +47,7 @@
     "url": "https://github.com/sudomock/sudomock-node/issues"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.15",
