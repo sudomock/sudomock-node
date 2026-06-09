@@ -124,6 +124,22 @@ export interface ExportOptions {
   imageSize?: number
   /** Compression quality 1-100 (default: 95) */
   quality?: number
+  /**
+   * Print resolution tag embedded in the output file metadata (range 72-2400).
+   *
+   * This is a metadata-only tag and does NOT change the pixel dimensions of
+   * the image -- `imageSize` controls the actual pixels. For a true print
+   * file, size your pixels: `imageSize = print_inches * dpi`
+   * (e.g. 12 in * 300 = 3600 px).
+   *
+   * The tag is written for all formats: JPEG (Exif XResolution/YResolution),
+   * PNG (pHYs chunk), WebP (Exif XResolution/YResolution). For maximum
+   * print-tool compatibility prefer `jpg` or `png`, whose resolution lives in
+   * the universally read density fields.
+   *
+   * Default: none (opt-in).
+   */
+  dpi?: number
 }
 
 export interface AssetSize {
