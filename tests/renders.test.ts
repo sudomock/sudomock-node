@@ -60,6 +60,29 @@ describe('renders.create()', () => {
     expect(capturedBody['export_label']).toBe('my-render')
   })
 
+  it('passes dpi through as lowercase "dpi"', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(MOCK_RENDER_RESPONSE)
+      }),
+    )
+
+    const client = createClient()
+    await client.renders.create({
+      mockupId: 'test-uuid',
+      smartObjects: [{ uuid: 'so-uuid' }],
+      exportOptions: { imageFormat: 'jpg', imageSize: 3600, dpi: 300 },
+    })
+
+    const exportOpts = capturedBody['export_options'] as Record<string, unknown>
+    expect(exportOpts['dpi']).toBe(300)
+    // Must remain lowercase 'dpi' -- not 'd_p_i' or any transformed key
+    expect(Object.keys(exportOpts)).toContain('dpi')
+    expect(Object.keys(exportOpts)).not.toContain('d_p_i')
+  })
+
   it('throws CreditError on 402', async () => {
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders`, () => {

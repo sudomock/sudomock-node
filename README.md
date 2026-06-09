@@ -96,6 +96,7 @@ const render = await client.renders.create({
     imageFormat: 'webp',  // 'png' | 'jpg' | 'webp'
     imageSize: 1920,      // max width in px
     quality: 95,          // 1-100
+    dpi: 300,             // optional, 72-2400: print resolution metadata (opt-in)
   },
   exportLabel: 'my-render',
 })
