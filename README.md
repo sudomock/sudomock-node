@@ -105,6 +105,52 @@ console.log(render.url)        // convenience: first file URL
 console.log(render.printFiles) // full array
 ```
 
+### Async Renders & Jobs
+
+Pass `isAsync: true` to enqueue a render instead of blocking. The API responds
+with `202 Accepted` and `renders.create` resolves with a `Job` (TypeScript
+narrows the return type via overload). Poll it with `client.jobs`:
+
+```typescript
+const job = await client.renders.create({
+  mockupId: 'mockup-uuid',
+  smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
+  isAsync: true,
+})
+console.log(job.renderUuid, job.state) // 'queued'
+
+// Poll a single time:
+const status = await client.jobs.retrieve(job.renderUuid)
+
+// ...or wait until it finishes (succeeded | failed):
+const done = await client.jobs.waitForJob(job.renderUuid, {
+  intervalMs: 2000,   // default
+  timeoutMs: 300_000, // default; throws TimeoutError if exceeded
+})
+if (done.state === 'failed') throw new Error(done.error ?? 'render failed')
+console.log(done.resultUrl)
+```
+
+`waitForJob` does NOT throw on a `failed` job -- inspect `state` and `error`.
+It throws `TimeoutError` only when the job is still running past `timeoutMs`.
+
+### Video Renders
+
+`renders.createVideo` animates a mockup. It is always asynchronous and returns a
+`Job` of kind `'video'`. Credit cost scales with model, duration, and audio; the
+free tier allows a single lifetime video. `durationSeconds` must be one of the
+durations the chosen model supports (otherwise the API returns a 400).
+
+```typescript
+const job = await client.renders.createVideo({
+  mockupId: 'mockup-uuid',
+  smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
+  video: { durationSeconds: 5, audio: false, advancedModel: false },
+})
+const done = await client.jobs.waitForJob(job.renderUuid)
+console.log(done.resultUrl) // mp4 URL
+```
+
 ### AI Render
 
 Render mockups from any product photo without a PSD file. The AI automatically detects the product, segments it, and applies your artwork with perspective correction.
@@ -142,6 +188,18 @@ console.log(mockup.smartObjects)
 console.log(mockup.thumbnails)
 ```
 
+PSD upload is FREE (0 credits). Pass `isAsync: true` to process in the
+background -- the call returns a `Job` (202) you poll via `client.jobs`:
+
+```typescript
+const job = await client.uploads.create({
+  psdFileUrl: 'https://example.com/mockup.psd',
+  isAsync: true,
+})
+const done = await client.jobs.waitForJob(job.renderUuid)
+console.log(done.mockupUuid)
+```
+
 ### Account
 
 ```typescript
@@ -171,6 +229,53 @@ console.log(session.session)    // 'sess_xxx...'
 console.log(session.expiresIn)  // 900 (seconds)
 console.log(session.displayMode) // 'iframe' | 'popup' | 'page'
 ```
+
+### Webhooks
+
+Manage webhook endpoints (and verify inbound deliveries) so you can react to
+async job completion without polling.
+
+```typescript
+// Create an endpoint -- the secret is returned in full on create; store it.
+const endpoint = await client.webhooks.create({
+  url: 'https://example.com/hooks/sudomock',
+  events: ['render.succeeded', 'render.failed', 'video.succeeded'],
+})
+
+await client.webhooks.list()
+await client.webhooks.update(endpoint.uuid, { enabled: false })
+await client.webhooks.rotateSecret(endpoint.uuid) // returns the new secret
+await client.webhooks.test(endpoint.uuid)         // send a test delivery
+await client.webhooks.listDeliveries(endpoint.uuid)
+await client.webhooks.replayDelivery(endpoint.uuid, deliveryId)
+await client.webhooks.delete(endpoint.uuid)
+```
+
+#### Verifying signatures
+
+Every delivery carries a `SudoMock-Signature: t=<unix>,v1=<hex>` header. The
+signed payload is `` `${t}.${rawBody}` `` (HMAC-SHA256). Verify it with the
+exact raw request body -- re-serialized JSON will not match:
+
+```typescript
+import { verifyWebhookSignature } from 'sudomock'
+
+// Express example -- capture the raw body (e.g. express.raw())
+app.post('/hooks/sudomock', (req, res) => {
+  const valid = verifyWebhookSignature(
+    req.body.toString('utf8'),            // raw payload string
+    req.header('SudoMock-Signature') ?? '',
+    process.env.SUDOMOCK_WEBHOOK_SECRET!,
+    { toleranceSeconds: 300 },            // default; rejects replays
+  )
+  if (!valid) return res.status(400).end()
+  // ...handle the event
+  res.status(204).end()
+})
+```
+
+The check is constant-time and rejects deliveries whose timestamp drifts more
+than the tolerance from now.
 
 ## Error Handling
 
@@ -244,8 +349,16 @@ import SudoMock, {
   type AccountResult,
   type CreateRenderParams,
   type AIRenderParams,
+  type Job,
+  type JobState,
+  type CreateVideoParams,
+  type WebhookEndpoint,
+  type WebhookDelivery,
 } from 'sudomock'
 ```
+
+> **Note:** Webhook management methods (`client.webhooks.*`) authenticate with
+> your API key, the same as every other resource.
 
 ## MCP Server
 
