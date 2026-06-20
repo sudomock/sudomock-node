@@ -6,6 +6,8 @@ import { AIResource } from './resources/ai'
 import { UploadsResource } from './resources/uploads'
 import { AccountResource } from './resources/account'
 import { StudioResource } from './resources/studio'
+import { JobsResource } from './resources/jobs'
+import { WebhooksResource } from './resources/webhooks'
 import type { SudoMockOptions } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.sudomock.com'
@@ -48,6 +50,10 @@ class SudoMock {
   readonly account: AccountResource
   /** Studio session management */
   readonly studio: StudioResource
+  /** Poll async jobs (async renders, video renders, async uploads) */
+  readonly jobs: JobsResource
+  /** Manage webhook endpoints and their deliveries */
+  readonly webhooks: WebhooksResource
 
   constructor(apiKey?: string, options: SudoMockOptions = {}) {
     const resolvedKey = apiKey ?? options.apiKey ?? process.env['SUDOMOCK_API_KEY'] ?? ''
@@ -71,6 +77,8 @@ class SudoMock {
     this.uploads = new UploadsResource(client)
     this.account = new AccountResource(client)
     this.studio = new StudioResource(client)
+    this.jobs = new JobsResource(client)
+    this.webhooks = new WebhooksResource(client)
   }
 }
 
@@ -92,6 +100,12 @@ export {
   TimeoutError,
   ConnectionError,
 } from './errors'
+
+// Webhook signature verification (usable without a client instance)
+export {
+  verifyWebhookSignature,
+  parseWebhookSignatureHeader,
+} from './resources/webhooks'
 
 export type {
   SudoMockOptions,
@@ -125,4 +139,20 @@ export type {
   ApiKeyInfo,
   CreateSessionParams,
   SessionResult,
+  Job,
+  JobKind,
+  JobState,
+  JobPayg,
+  WaitForJobOptions,
+  VideoOptions,
+  CreateVideoParams,
+  WebhookEvent,
+  WebhookEndpoint,
+  CreateWebhookEndpointParams,
+  UpdateWebhookEndpointParams,
+  WebhookEndpointListResult,
+  WebhookDelivery,
+  WebhookDeliveryListResult,
+  WebhookSignature,
+  VerifyWebhookOptions,
 } from './types'
