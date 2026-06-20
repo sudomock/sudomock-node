@@ -102,10 +102,7 @@ export {
 } from './errors'
 
 // Webhook signature verification (usable without a client instance)
-export {
-  verifyWebhookSignature,
-  parseWebhookSignatureHeader,
-} from './resources/webhooks'
+export { verifyWebhookSignature } from './resources/webhooks'
 
 export type {
   SudoMockOptions,
@@ -141,6 +138,7 @@ export type {
   SessionResult,
   Job,
   JobKind,
+  JobStatus,
   JobState,
   JobPayg,
   WaitForJobOptions,
@@ -150,9 +148,6 @@ export type {
   WebhookEndpoint,
   CreateWebhookEndpointParams,
   UpdateWebhookEndpointParams,
-  WebhookEndpointListResult,
   WebhookDelivery,
-  WebhookDeliveryListResult,
-  WebhookSignature,
   VerifyWebhookOptions,
 } from './types'

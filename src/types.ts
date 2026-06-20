@@ -337,24 +337,33 @@ export interface UploadResult {
 // ---------------------------------------------------------------------------
 
 /** The kind of work a job performs. */
-export type JobKind = 'render' | 'video'
+export type JobKind = 'render' | 'video' | 'upload'
 
 /**
- * Terminal and in-flight states for an async job.
+ * Terminal and in-flight statuses for an async job (the API field is `status`).
  *
  * - `queued`    -- accepted, waiting for a worker
  * - `running`   -- a worker is processing the job
  * - `succeeded` -- finished; `resultUrl` is populated (terminal)
  * - `failed`    -- finished with an error; `error` is populated (terminal)
  */
-export type JobState = 'queued' | 'running' | 'succeeded' | 'failed'
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
-/** Pay-as-you-go usage recorded for a job, if any. */
+/** @deprecated Use {@link JobStatus}. Kept for backward compatibility. */
+export type JobState = JobStatus
+
+/**
+ * Pay-as-you-go cost breakdown for a job. Present (non-null) ONLY for PAYG
+ * jobs; `null` for credit/subscription jobs. Mirrors the nested `payg` object
+ * from `GET /jobs/{renderUuid}`.
+ */
 export interface JobPayg {
-  /** Whether the job was billed via pay-as-you-go. */
-  used: boolean
-  /** Dollar amount charged against the PAYG balance, if applicable. */
-  amount?: number
+  /** Billable credit count for the PAYG job. */
+  credits?: number | null
+  /** Per-credit price in USD. */
+  unitPrice?: number | null
+  /** Total USD cost (`credits * unitPrice`), or `null` if either is missing. */
+  cost?: number | null
 }
 
 /**
@@ -366,24 +375,42 @@ export interface Job {
   renderUuid: string
   /** What the job produces. */
   kind: JobKind
-  /** Current lifecycle state. */
-  state: JobState
-  /** Relative poll URL, e.g. `/api/v1/jobs/{renderUuid}`. */
+  /** Current lifecycle status (API field: `status`). */
+  status: JobStatus
+  /**
+   * Relative poll URL, e.g. `/api/v1/jobs/{renderUuid}`. Present only on the
+   * 202 submit response, not on the `GET /jobs` poll.
+   */
   statusUrl?: string
-  /** Output URL once `state === 'succeeded'`. */
-  resultUrl?: string | null
-  /** UUID of the mockup produced/affected, when applicable. */
-  mockupUuid?: string | null
-  /** Credit cost computed for the job. */
-  cost?: number | null
-  /** Credits actually charged. */
-  credits?: number | null
   /** Model used (e.g. for video renders). */
   model?: string | null
-  /** Error message when `state === 'failed'`. */
+  /** Output URL once `status === 'succeeded'`. */
+  resultUrl?: string | null
+  /** UUID of the mockup produced/affected (set for `kind === 'upload'`). */
+  mockupUuid?: string | null
+  /** Error message when `status === 'failed'`. */
   error?: string | null
-  /** Pay-as-you-go usage details, if any. */
+  /**
+   * Real charge for the job. For credit/subscription jobs this is the deducted
+   * credit count; for PAYG it is the billable credit count (NOT the stored 0).
+   * The dollar amount lives in {@link payg}.
+   */
+  creditsCharged?: number | null
+  /** Pay-as-you-go cost breakdown, present only for PAYG jobs (else `null`). */
   payg?: JobPayg | null
+  /** ISO 8601 creation timestamp (poll response). */
+  createdAt?: string
+  /** ISO 8601 last-update timestamp (poll response). */
+  updatedAt?: string
+  /**
+   * Cost-based credit quote echoed on the 202 submit response (video). Not
+   * present on the `GET /jobs` poll.
+   */
+  estimatedCredits?: number | null
+  /** Clip duration in seconds, echoed on the video 202 submit response. */
+  durationSeconds?: number | null
+  /** Whether audio was generated, echoed on the video 202 submit response. */
+  audio?: boolean | null
 }
 
 /** Options for {@link JobsResource.waitForJob}. */
@@ -408,10 +435,11 @@ export interface VideoOptions {
   /** Include generated audio (default: false). */
   audio?: boolean
   /**
-   * Opt into a higher-tier ("advanced") model. When omitted the API picks the
-   * default model for your plan.
+   * Force a specific model by id (overrides the auto-router). When omitted the
+   * API auto-selects the model for your tier. An unknown/eliminated model id is
+   * rejected with a 400.
    */
-  advancedModel?: boolean
+  advancedModel?: string
 }
 
 export interface CreateVideoParams {
@@ -433,75 +461,68 @@ export interface CreateVideoParams {
 export type WebhookEvent =
   | 'render.succeeded'
   | 'render.failed'
+  | 'upload.succeeded'
   | 'video.succeeded'
   | 'video.failed'
+  | 'webhook.test'
   | (string & {})
 
 export interface WebhookEndpoint {
-  uuid: string
+  /** Endpoint identifier (API field: `id`). */
+  id: string
   /** Destination URL deliveries are POSTed to. */
   url: string
-  /** Subscribed event types. */
-  events: WebhookEvent[]
-  /** Whether the endpoint is currently active. */
-  enabled: boolean
   /**
-   * Signing secret. Only returned in full on create and on rotate-secret;
-   * otherwise omitted or masked.
+   * Signing secret. Returned in full ONLY on create and rotate-secret;
+   * otherwise masked (`whsec_****<last4>`).
    */
   secret?: string
+  /** Optional human-readable description. */
+  description?: string | null
+  /** Subscribed event types (empty array = subscribe to all events). */
+  eventTypes: WebhookEvent[]
+  /** Whether the endpoint is currently active. */
+  enabled: boolean
   createdAt?: string
-  updatedAt?: string
+  updatedAt?: string | null
 }
 
 export interface CreateWebhookEndpointParams {
-  /** Destination URL (must be HTTPS in production). */
+  /** Destination URL (must be HTTPS). */
   url: string
-  /** Event types to subscribe to. */
-  events: WebhookEvent[]
-  /** Create the endpoint in a disabled state (default: enabled). */
-  enabled?: boolean
+  /** Event types to subscribe to (empty = all events). */
+  eventTypes: WebhookEvent[]
+  /** Optional description. */
+  description?: string
 }
 
 export interface UpdateWebhookEndpointParams {
   url?: string
-  events?: WebhookEvent[]
+  eventTypes?: WebhookEvent[]
+  description?: string
   enabled?: boolean
 }
 
-export interface WebhookEndpointListResult {
-  endpoints: WebhookEndpoint[]
-  total: number
-}
-
-/** A single delivery attempt of an event to an endpoint. */
+/** A single delivery-attempt log row. */
 export interface WebhookDelivery {
-  uuid: string
-  /** Event type that was delivered. */
-  event: WebhookEvent
+  /** Delivery row identifier (API field: `id`). */
+  id: string
+  /** Endpoint this delivery belongs to. */
+  endpointId?: string
+  /** Job UUID this delivery relates to (the idempotency anchor). */
+  jobUuid?: string
+  /** Event type that was delivered (API field: `event_type`). */
+  eventType: WebhookEvent
+  /** Delivery status: `pending` | `delivered` | `failed` | `dead`. */
+  status: string
   /** HTTP status code returned by the destination, if the attempt completed. */
-  responseStatus?: number | null
-  /** Whether the delivery ultimately succeeded. */
-  success: boolean
-  /** Job UUID this delivery relates to. */
-  jobUuid?: string | null
+  httpStatus?: number | null
+  /** Retry attempt counter (0 on first try). */
+  attempt: number
+  /** Last error message when the attempt failed. */
+  lastError?: string | null
   createdAt?: string
-}
-
-export interface WebhookDeliveryListResult {
-  deliveries: WebhookDelivery[]
-  total: number
-}
-
-/**
- * Parsed components of an inbound `SudoMock-Signature` header:
- * `t=<unix-seconds>,v1=<hex-hmac>`.
- */
-export interface WebhookSignature {
-  /** Unix timestamp (seconds) the signature was generated. */
-  timestamp: number
-  /** Hex-encoded HMAC-SHA256 signature(s). */
-  signatures: string[]
+  updatedAt?: string | null
 }
 
 export interface VerifyWebhookOptions {

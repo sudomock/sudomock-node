@@ -7,8 +7,8 @@ const DEFAULT_POLL_INTERVAL_MS = 2_000
 /** Default overall wait budget before giving up (ms). */
 const DEFAULT_WAIT_TIMEOUT_MS = 300_000
 
-/** Job states that will not change further. */
-const TERMINAL_STATES = new Set<Job['state']>(['succeeded', 'failed'])
+/** Job statuses that will not change further. */
+const TERMINAL_STATUSES = new Set<Job['status']>(['succeeded', 'failed'])
 
 /**
  * Heuristic: does this parsed body look like an async {@link Job} rather than a
@@ -24,17 +24,18 @@ export function isJobBody(body: unknown): boolean {
 }
 
 /**
- * Normalize a parsed job body. The API uses `status` for queued/running on the
- * 202 submit response and `state` on the `GET /jobs` poll response; we expose a
- * single `state` field. Defaults `kind` to `'render'` when absent.
+ * Normalize a parsed job body. The API exposes the lifecycle on a `status`
+ * field (on both the 202 submit response and the `GET /jobs` poll). We also
+ * accept a legacy `state` key for forward/backward compatibility. Defaults
+ * `kind` to `'render'` when absent.
  */
 export function toJob(body: unknown): Job {
   const raw = (body ?? {}) as Record<string, unknown>
-  const state = (raw['state'] ?? raw['status']) as Job['state'] | undefined
+  const status = (raw['status'] ?? raw['state']) as Job['status'] | undefined
   return {
     ...(raw as unknown as Job),
     kind: (raw['kind'] as Job['kind']) ?? 'render',
-    state: state ?? 'queued',
+    status: status ?? 'queued',
   }
 }
 
@@ -47,7 +48,7 @@ export class JobsResource {
    * @example
    * ```ts
    * const job = await client.jobs.retrieve(renderUuid)
-   * if (job.state === 'succeeded') console.log(job.resultUrl)
+   * if (job.status === 'succeeded') console.log(job.resultUrl)
    * ```
    */
   async retrieve(renderUuid: string): Promise<Job> {
@@ -63,13 +64,13 @@ export class JobsResource {
    * and resolve with the final {@link Job}.
    *
    * Throws a {@link TimeoutError} if the job is still running after
-   * `timeoutMs`. This does NOT throw on a `failed` job -- inspect `state`
+   * `timeoutMs`. This does NOT throw on a `failed` job -- inspect `status`
    * and `error` on the returned job.
    *
    * @example
    * ```ts
    * const job = await client.jobs.waitForJob(renderUuid, { intervalMs: 1000 })
-   * if (job.state === 'failed') throw new Error(job.error ?? 'render failed')
+   * if (job.status === 'failed') throw new Error(job.error ?? 'render failed')
    * console.log(job.resultUrl)
    * ```
    */
@@ -83,12 +84,12 @@ export class JobsResource {
 
     for (;;) {
       const job = await this.retrieve(renderUuid)
-      if (TERMINAL_STATES.has(job.state)) {
+      if (TERMINAL_STATUSES.has(job.status)) {
         return job
       }
       if (Date.now() + intervalMs > deadline) {
         throw new TimeoutError(
-          `Job ${renderUuid} did not finish within ${timeoutMs}ms (last state: ${job.state})`,
+          `Job ${renderUuid} did not finish within ${timeoutMs}ms (last status: ${job.status})`,
         )
       }
       await sleep(intervalMs)

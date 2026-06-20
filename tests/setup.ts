@@ -129,31 +129,68 @@ export const MOCK_VIDEO_ACCEPTED_RESPONSE = {
   status_url: '/api/v1/jobs/66666666-6666-6666-6666-666666666666',
 }
 
-// GET /jobs/{uuid} terminal success body
+// GET /jobs/{uuid} terminal success body (credit/subscription job: payg is null)
 export const MOCK_JOB_SUCCEEDED_RESPONSE = {
   success: true,
   data: {
     render_uuid: '55555555-5555-5555-5555-555555555555',
     kind: 'render',
-    state: 'succeeded',
-    result_url: 'https://cdn.sudomock.com/renders/async/done.webp',
-    mockup_uuid: '11111111-1111-1111-1111-111111111111',
-    cost: 1,
-    credits: 1,
+    status: 'succeeded',
     model: null,
+    result_url: 'https://cdn.sudomock.com/renders/async/done.webp',
+    mockup_uuid: null,
     error: null,
-    payg: { used: false },
+    credits_charged: 1,
+    payg: null,
+    created_at: '2026-06-21T00:00:00Z',
+    updated_at: '2026-06-21T00:00:05Z',
   },
 }
 
+// GET /jobs/{uuid} terminal success for a PAYG job: jobs.credits is 0 on the
+// BE, the real cost is surfaced via the nested payg object.
+export const MOCK_JOB_PAYG_SUCCEEDED_RESPONSE = {
+  success: true,
+  data: {
+    render_uuid: '55555555-5555-5555-5555-555555555555',
+    kind: 'render',
+    status: 'succeeded',
+    model: null,
+    result_url: 'https://cdn.sudomock.com/renders/async/done.webp',
+    mockup_uuid: null,
+    error: null,
+    credits_charged: 2,
+    payg: { credits: 2, unit_price: 0.0035, cost: 0.007 },
+    created_at: '2026-06-21T00:00:00Z',
+    updated_at: '2026-06-21T00:00:05Z',
+  },
+}
+
+// WebhookEndpointResponse shape: id, event_types, description, masked secret.
 export const MOCK_WEBHOOK_ENDPOINT = {
-  uuid: '77777777-7777-7777-7777-777777777777',
+  id: '77777777-7777-7777-7777-777777777777',
   url: 'https://example.com/hooks/sudomock',
-  events: ['render.succeeded', 'render.failed'],
-  enabled: true,
   secret: 'whsec_abc123',
+  description: null,
+  event_types: ['render.succeeded', 'render.failed'],
+  enabled: true,
   created_at: '2026-06-21T00:00:00Z',
-  updated_at: '2026-06-21T00:00:00Z',
+  updated_at: null,
+}
+
+// WebhookDeliveryResponse shape: id, endpoint_id, job_uuid, event_type,
+// status, http_status, attempt, last_error.
+export const MOCK_WEBHOOK_DELIVERY = {
+  id: '88888888-8888-8888-8888-888888888888',
+  endpoint_id: '77777777-7777-7777-7777-777777777777',
+  job_uuid: '55555555-5555-5555-5555-555555555555',
+  event_type: 'render.succeeded',
+  status: 'failed',
+  http_status: 500,
+  attempt: 2,
+  last_error: 'non-2xx response: 500',
+  created_at: '2026-06-21T00:05:00Z',
+  updated_at: '2026-06-21T00:06:00Z',
 }
 
 // ---------------------------------------------------------------------------

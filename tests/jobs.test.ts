@@ -9,6 +9,7 @@ import {
   MOCK_JOB_ACCEPTED_RESPONSE,
   MOCK_VIDEO_ACCEPTED_RESPONSE,
   MOCK_JOB_SUCCEEDED_RESPONSE,
+  MOCK_JOB_PAYG_SUCCEEDED_RESPONSE,
 } from './setup'
 
 function createClient() {
@@ -35,7 +36,7 @@ describe('renders.create({ isAsync: true })', () => {
     // `job` is typed as Job via the overload -- no `url`/`printFiles` access.
     expect(job.renderUuid).toBe(ASYNC_UUID)
     expect(job.kind).toBe('render')
-    expect(job.state).toBe('queued') // normalized from `status`
+    expect(job.status).toBe('queued')
     expect(job.statusUrl).toBe(`/api/v1/jobs/${ASYNC_UUID}`)
   })
 
@@ -101,14 +102,14 @@ describe('renders.createVideo()', () => {
     const client = createClient()
     await client.renders.createVideo({
       mockupId: 'mock-uuid',
-      video: { durationSeconds: 8, audio: true, advancedModel: true },
+      video: { durationSeconds: 8, audio: true, advancedModel: 'veo-3.1-fast' },
     })
 
     expect(capturedBody['mockup_uuid']).toBe('mock-uuid')
     const video = capturedBody['video'] as Record<string, unknown>
     expect(video['duration_seconds']).toBe(8)
     expect(video['audio']).toBe(true)
-    expect(video['advanced_model']).toBe(true)
+    expect(video['advanced_model']).toBe('veo-3.1-fast')
   })
 })
 
@@ -122,13 +123,28 @@ describe('jobs.retrieve()', () => {
 
     const client = createClient()
     const job = await client.jobs.retrieve(ASYNC_UUID)
-    expect(job.state).toBe('succeeded')
+    expect(job.status).toBe('succeeded')
     expect(job.resultUrl).toBe(
       'https://cdn.sudomock.com/renders/async/done.webp',
     )
-    expect(job.mockupUuid).toBe('11111111-1111-1111-1111-111111111111')
-    expect(job.cost).toBe(1)
-    expect(job.payg?.used).toBe(false)
+    expect(job.mockupUuid).toBeNull()
+    expect(job.creditsCharged).toBe(1)
+    expect(job.payg).toBeNull()
+  })
+
+  it('surfaces the nested PAYG cost breakdown', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () => {
+        return HttpResponse.json(MOCK_JOB_PAYG_SUCCEEDED_RESPONSE)
+      }),
+    )
+
+    const client = createClient()
+    const job = await client.jobs.retrieve(ASYNC_UUID)
+    expect(job.creditsCharged).toBe(2)
+    expect(job.payg?.credits).toBe(2)
+    expect(job.payg?.unitPrice).toBe(0.0035)
+    expect(job.payg?.cost).toBe(0.007)
   })
 })
 
@@ -141,7 +157,7 @@ describe('jobs.waitForJob()', () => {
         if (calls < 3) {
           return HttpResponse.json({
             success: true,
-            data: { render_uuid: ASYNC_UUID, kind: 'render', state: 'running' },
+            data: { render_uuid: ASYNC_UUID, kind: 'render', status: 'running' },
           })
         }
         return HttpResponse.json(MOCK_JOB_SUCCEEDED_RESPONSE)
@@ -150,7 +166,7 @@ describe('jobs.waitForJob()', () => {
 
     const client = createClient()
     const job = await client.jobs.waitForJob(ASYNC_UUID, { intervalMs: 5 })
-    expect(job.state).toBe('succeeded')
+    expect(job.status).toBe('succeeded')
     expect(calls).toBe(3)
   })
 
@@ -162,7 +178,7 @@ describe('jobs.waitForJob()', () => {
           data: {
             render_uuid: ASYNC_UUID,
             kind: 'render',
-            state: 'failed',
+            status: 'failed',
             error: 'render engine error',
           },
         })
@@ -171,7 +187,7 @@ describe('jobs.waitForJob()', () => {
 
     const client = createClient()
     const job = await client.jobs.waitForJob(ASYNC_UUID, { intervalMs: 5 })
-    expect(job.state).toBe('failed')
+    expect(job.status).toBe('failed')
     expect(job.error).toBe('render engine error')
   })
 
@@ -180,7 +196,7 @@ describe('jobs.waitForJob()', () => {
       http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () => {
         return HttpResponse.json({
           success: true,
-          data: { render_uuid: ASYNC_UUID, kind: 'render', state: 'running' },
+          data: { render_uuid: ASYNC_UUID, kind: 'render', status: 'running' },
         })
       }),
     )
@@ -206,7 +222,7 @@ describe('uploads.create({ isAsync: true })', () => {
       isAsync: true,
     })
     expect(job.renderUuid).toBe(ASYNC_UUID)
-    expect(job.state).toBe('queued')
+    expect(job.status).toBe('queued')
   })
 
   it('still returns an UploadResult on a sync 200', async () => {
