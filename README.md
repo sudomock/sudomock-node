@@ -117,7 +117,7 @@ const job = await client.renders.create({
   smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
   isAsync: true,
 })
-console.log(job.renderUuid, job.state) // 'queued'
+console.log(job.renderUuid, job.status) // 'queued'
 
 // Poll a single time:
 const status = await client.jobs.retrieve(job.renderUuid)
@@ -127,11 +127,11 @@ const done = await client.jobs.waitForJob(job.renderUuid, {
   intervalMs: 2000,   // default
   timeoutMs: 300_000, // default; throws TimeoutError if exceeded
 })
-if (done.state === 'failed') throw new Error(done.error ?? 'render failed')
+if (done.status === 'failed') throw new Error(done.error ?? 'render failed')
 console.log(done.resultUrl)
 ```
 
-`waitForJob` does NOT throw on a `failed` job -- inspect `state` and `error`.
+`waitForJob` does NOT throw on a `failed` job -- inspect `status` and `error`.
 It throws `TimeoutError` only when the job is still running past `timeoutMs`.
 
 ### Video Renders
@@ -145,7 +145,7 @@ durations the chosen model supports (otherwise the API returns a 400).
 const job = await client.renders.createVideo({
   mockupId: 'mockup-uuid',
   smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
-  video: { durationSeconds: 5, audio: false, advancedModel: false },
+  video: { durationSeconds: 5, audio: false },
 })
 const done = await client.jobs.waitForJob(job.renderUuid)
 console.log(done.resultUrl) // mp4 URL
@@ -239,23 +239,24 @@ async job completion without polling.
 // Create an endpoint -- the secret is returned in full on create; store it.
 const endpoint = await client.webhooks.create({
   url: 'https://example.com/hooks/sudomock',
-  events: ['render.succeeded', 'render.failed', 'video.succeeded'],
+  eventTypes: ['render.succeeded', 'render.failed', 'video.succeeded'],
 })
 
 await client.webhooks.list()
-await client.webhooks.update(endpoint.uuid, { enabled: false })
-await client.webhooks.rotateSecret(endpoint.uuid) // returns the new secret
-await client.webhooks.test(endpoint.uuid)         // send a test delivery
-await client.webhooks.listDeliveries(endpoint.uuid)
-await client.webhooks.replayDelivery(endpoint.uuid, deliveryId)
-await client.webhooks.delete(endpoint.uuid)
+await client.webhooks.update(endpoint.id, { enabled: false })
+await client.webhooks.rotateSecret(endpoint.id) // returns the new secret
+await client.webhooks.test(endpoint.id)         // send a test delivery
+await client.webhooks.listDeliveries(endpoint.id)
+await client.webhooks.replayDelivery(endpoint.id, deliveryId)
+await client.webhooks.delete(endpoint.id)
 ```
 
 #### Verifying signatures
 
-Every delivery carries a `SudoMock-Signature: t=<unix>,v1=<hex>` header. The
-signed payload is `` `${t}.${rawBody}` `` (HMAC-SHA256). Verify it with the
-exact raw request body -- re-serialized JSON will not match:
+Every delivery carries TWO headers -- `X-SudoMock-Signature` (hex HMAC-SHA256
+digest) and `X-SudoMock-Timestamp` (unix seconds). The signed payload is
+`` `${timestamp}.${rawBody}` ``. Verify it with the exact raw request body --
+re-serialized JSON will not match:
 
 ```typescript
 import { verifyWebhookSignature } from 'sudomock'
@@ -264,7 +265,8 @@ import { verifyWebhookSignature } from 'sudomock'
 app.post('/hooks/sudomock', (req, res) => {
   const valid = verifyWebhookSignature(
     req.body.toString('utf8'),            // raw payload string
-    req.header('SudoMock-Signature') ?? '',
+    req.header('X-SudoMock-Signature') ?? '',
+    req.header('X-SudoMock-Timestamp') ?? '',
     process.env.SUDOMOCK_WEBHOOK_SECRET!,
     { toleranceSeconds: 300 },            // default; rejects replays
   )
@@ -350,7 +352,7 @@ import SudoMock, {
   type CreateRenderParams,
   type AIRenderParams,
   type Job,
-  type JobState,
+  type JobStatus,
   type CreateVideoParams,
   type WebhookEndpoint,
   type WebhookDelivery,
