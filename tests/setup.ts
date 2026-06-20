@@ -114,6 +114,48 @@ export const MOCK_SESSION_RESPONSE = {
   displayMode: 'iframe',
 }
 
+// 202 Accepted body for async render/upload/video submissions
+export const MOCK_JOB_ACCEPTED_RESPONSE = {
+  render_uuid: '55555555-5555-5555-5555-555555555555',
+  kind: 'render',
+  status: 'queued',
+  status_url: '/api/v1/jobs/55555555-5555-5555-5555-555555555555',
+}
+
+export const MOCK_VIDEO_ACCEPTED_RESPONSE = {
+  render_uuid: '66666666-6666-6666-6666-666666666666',
+  kind: 'video',
+  status: 'queued',
+  status_url: '/api/v1/jobs/66666666-6666-6666-6666-666666666666',
+}
+
+// GET /jobs/{uuid} terminal success body
+export const MOCK_JOB_SUCCEEDED_RESPONSE = {
+  success: true,
+  data: {
+    render_uuid: '55555555-5555-5555-5555-555555555555',
+    kind: 'render',
+    state: 'succeeded',
+    result_url: 'https://cdn.sudomock.com/renders/async/done.webp',
+    mockup_uuid: '11111111-1111-1111-1111-111111111111',
+    cost: 1,
+    credits: 1,
+    model: null,
+    error: null,
+    payg: { used: false },
+  },
+}
+
+export const MOCK_WEBHOOK_ENDPOINT = {
+  uuid: '77777777-7777-7777-7777-777777777777',
+  url: 'https://example.com/hooks/sudomock',
+  events: ['render.succeeded', 'render.failed'],
+  enabled: true,
+  secret: 'whsec_abc123',
+  created_at: '2026-06-21T00:00:00Z',
+  updated_at: '2026-06-21T00:00:00Z',
+}
+
 // ---------------------------------------------------------------------------
 // Default handlers -- happy path
 // ---------------------------------------------------------------------------

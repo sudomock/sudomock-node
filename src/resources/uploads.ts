@@ -1,5 +1,6 @@
 import type { HttpClient } from '../client'
-import type { UploadParams, UploadResult } from '../types'
+import type { UploadParams, UploadResult, Job } from '../types'
+import { isJobBody, toJob } from './jobs'
 
 /** Default upload timeout: 120s (PSD processing can be slow) */
 const UPLOAD_TIMEOUT = 120_000
@@ -13,7 +14,12 @@ export class UploadsResource {
    * The API downloads the PSD, extracts layers and smart objects,
    * and generates thumbnails.
    *
-   * @example
+   * By default this blocks until processing finishes and resolves with the
+   * {@link UploadResult}. Pass `isAsync: true` to process in the background:
+   * the API responds with HTTP 202 (PSD upload is FREE -- 0 credits) and this
+   * method resolves with a {@link Job} you can poll via `client.jobs`.
+   *
+   * @example Synchronous
    * ```ts
    * const mockup = await client.uploads.create({
    *   psdFileUrl: 'https://example.com/mockup.psd',
@@ -21,13 +27,33 @@ export class UploadsResource {
    * })
    * console.log(mockup.uuid, mockup.smartObjects)
    * ```
+   *
+   * @example Asynchronous
+   * ```ts
+   * const job = await client.uploads.create({
+   *   psdFileUrl: 'https://example.com/mockup.psd',
+   *   isAsync: true,
+   * })
+   * const done = await client.jobs.waitForJob(job.renderUuid)
+   * console.log(done.mockupUuid)
+   * ```
    */
-  async create(params: UploadParams): Promise<UploadResult> {
-    return this.client.request<UploadResult>({
+  create(params: UploadParams & { isAsync: true }): Promise<Job>
+  create(params: UploadParams): Promise<UploadResult>
+  async create(params: UploadParams): Promise<UploadResult | Job> {
+    const { status, data } = await this.client.requestWithStatus<
+      UploadResult | Job
+    >({
       method: 'POST',
       path: '/api/v1/psd/upload',
       body: params,
       timeout: UPLOAD_TIMEOUT,
     })
+
+    if (status === 202 || isJobBody(data)) {
+      return toJob(data)
+    }
+
+    return data as UploadResult
   }
 }

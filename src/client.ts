@@ -77,6 +77,14 @@ const INITIAL_BACKOFF_MS = 500
 /** Status codes that are safe to retry */
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
 
+/** Response wrapper that preserves the HTTP status alongside the parsed body. */
+export interface ResponseWithStatus<T> {
+  /** HTTP status code (e.g. 200 or 202). */
+  status: number
+  /** Parsed, camelCased response body. */
+  data: T
+}
+
 export class HttpClient {
   private readonly config: ClientConfig
 
@@ -85,6 +93,15 @@ export class HttpClient {
   }
 
   async request<T>(options: RequestOptions): Promise<T> {
+    return (await this.requestWithStatus<T>(options)).data
+  }
+
+  /**
+   * Like {@link request}, but resolves with both the HTTP status code and the
+   * parsed body. Used by endpoints that can return either 200 (inline result)
+   * or 202 (async job accepted) and need to branch on the status.
+   */
+  async requestWithStatus<T>(options: RequestOptions): Promise<ResponseWithStatus<T>> {
     const url = this.buildUrl(options.path, options.query)
     const timeout = options.timeout ?? this.config.timeout
 
@@ -97,7 +114,7 @@ export class HttpClient {
 
         // 204 No Content
         if (response.status === 204) {
-          return undefined as T
+          return { status: 204, data: undefined as T }
         }
 
         // Parse response
@@ -121,7 +138,7 @@ export class HttpClient {
         // The API wraps data in { success, data, message? }
         // Some endpoints (like studio/create-session) don't use the data wrapper
         const data = responseBody['data'] ?? responseBody
-        return keysToCamel(data) as T
+        return { status: response.status, data: keysToCamel(data) as T }
       } catch (err) {
         if (err instanceof SudoMockError) {
           // Already a SudoMockError -- rethrow unless retryable
