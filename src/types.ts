@@ -256,8 +256,10 @@ export interface PrintFile {
 export interface RenderResult {
   printFiles: PrintFile[]
   /**
-   * Render UUID, present on the sync render response. Correlates this render
-   * with webhook deliveries and `GET /jobs/{renderUuid}` records.
+   * Render UUID, present on the sync render response. This is the render's
+   * transaction id (NOT an async-job poll path) -- use it to correlate this
+   * render with webhook deliveries and transaction records. The async job poll
+   * is `GET /jobs/{jobId}`, keyed by {@link Job.jobId}.
    */
   renderUuid?: string
   /** Convenience accessor: URL of the first rendered file */
@@ -712,8 +714,8 @@ export interface WebhookDelivery {
   id: string
   /** Endpoint this delivery belongs to. */
   endpointId?: string
-  /** Job UUID this delivery relates to (the idempotency anchor). */
-  jobUuid?: string
+  /** Job id this delivery relates to (the idempotency anchor). */
+  jobId?: string
   /** Event type that was delivered (API field: `event_type`). */
   eventType: WebhookEvent
   /** Delivery status: `pending` | `delivered` | `failed` | `dead`. */

@@ -196,12 +196,12 @@ export const MOCK_WEBHOOK_ENDPOINT = {
   updated_at: null,
 }
 
-// WebhookDeliveryResponse shape: id, endpoint_id, job_uuid, event_type,
+// WebhookDeliveryResponse shape: id, endpoint_id, job_id, event_type,
 // status, http_status, attempt, last_error.
 export const MOCK_WEBHOOK_DELIVERY = {
   id: '88888888-8888-8888-8888-888888888888',
   endpoint_id: '77777777-7777-7777-7777-777777777777',
-  job_uuid: '55555555-5555-5555-5555-555555555555',
+  job_id: '55555555-5555-5555-5555-555555555555',
   event_type: 'render.succeeded',
   status: 'failed',
   http_status: 500,
