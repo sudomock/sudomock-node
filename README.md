@@ -8,7 +8,7 @@ Official Node.js/TypeScript SDK for the [SudoMock API](https://docs.sudomock.com
 npm install sudomock
 ```
 
-**Requirements:** Node.js 18+ (uses native `fetch`)
+**Requirements:** Node.js 20+ (uses native `fetch`)
 
 ## Quick Start
 
@@ -73,6 +73,11 @@ const updated = await client.mockups.update('uuid', { name: 'New Name' })
 await client.mockups.delete('uuid')
 ```
 
+> **Bulk delete all mockups** (`DELETE /api/v1/mockups/all`) requires a
+> dashboard Bearer token and is **not** callable with an API key (the API
+> returns 403). It is therefore intentionally not exposed by this SDK -- use
+> the dashboard.
+
 ### Renders
 
 ```typescript
@@ -93,9 +98,9 @@ const render = await client.renders.create({
     },
   }],
   exportOptions: {
-    imageFormat: 'webp',  // 'png' | 'jpg' | 'webp'
-    imageSize: 1920,      // max width in px
-    quality: 95,          // 1-100
+    imageFormat: 'webp',  // 'png' | 'jpg' | 'webp' (default 'webp')
+    imageSize: 2048,      // max width in px, 100-10000 (default 2048)
+    quality: 90,          // 1-100 (default 90)
     dpi: 300,             // optional, 72-2400: print resolution metadata (opt-in)
   },
   exportLabel: 'my-render',
@@ -134,6 +139,16 @@ console.log(done.resultUrl)
 `waitForJob` does NOT throw on a `failed` job -- inspect `status` and `error`.
 It throws `TimeoutError` only when the job is still running past `timeoutMs`.
 
+List and page your jobs (keyset pagination, newest first). Filter by `kind`
+(`render` | `video` | `upload`) and/or `mockupUuid`:
+
+```typescript
+const { jobs, nextCursor } = await client.jobs.list({ kind: 'video', limit: 50 })
+if (nextCursor) {
+  const next = await client.jobs.list({ cursor: nextCursor })
+}
+```
+
 ### Video Renders
 
 `renders.createVideo` animates a mockup. It is always asynchronous and returns a
@@ -151,29 +166,52 @@ const done = await client.jobs.waitForJob(job.renderUuid)
 console.log(done.resultUrl) // mp4 URL
 ```
 
-### AI Render
+`video.motion` (`'ambient'` | `'showcase'`, default `'ambient'`) controls the
+camera movement. You can also animate a raw image directly (no mockup) and
+attach a per-call webhook:
 
-Render mockups from any product photo without a PSD file. The AI automatically detects the product, segments it, and applies your artwork with perspective correction.
+```typescript
+const job = await client.renders.createVideo({
+  imageUrl: 'https://example.com/art.png', // raw-image mode
+  video: { durationSeconds: 5, motion: 'showcase' },
+  webhook: { url: 'https://example.com/hooks/sudomock' },
+})
+```
+
+### SudoAI 2D Mockups (`client.ai`)
+
+Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
+mockup catalog. `client.ai.render` posts to `/api/v1/sudoai/2d-mockup/render`
+and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
+`color`.
 
 ```typescript
 const result = await client.ai.render({
-  sourceUrl: 'https://example.com/product-photo.jpg',
-  artworkUrl: 'https://example.com/design.png',
-  productType: 't-shirt',  // optional hint
-  adjustments: {
-    brightness: 0,
-    contrast: 0,
-    opacity: 1,
-    warpStrength: 0.8,
-    textureStrength: 0.5,
-  },
-  exportOptions: { imageFormat: 'png' },
+  mockupId: 'mockup-uuid',
+  printAreas: [{
+    uuid: 'print-area-uuid',
+    artworkUrl: 'https://example.com/design.png',
+    adjustments: { opacity: 90, vibrance: 10, blur: 0 },
+  }],
+  exportOptions: { imageFormat: 'webp', imageSize: 2048, quality: 90 },
 })
 
-console.log(result.url)
-console.log(result.printFiles[0].confidence) // 0.95
-console.log(result.printFiles[0].durationMs) // 2340
+console.log(result.url)                       // first rendered file
+console.log(result.printFiles[0].durationMs)  // 2340
+console.log(result.printFiles[0].exportFormat) // 'webp'
 ```
+
+Manage the 2D-mockup catalog:
+
+```typescript
+const mockups = await client.ai.list({ limit: 50 })
+const mockup = await client.ai.get('mockup-uuid')
+await client.ai.delete('mockup-uuid')
+```
+
+> The legacy `POST /sudoai/render` endpoint is a deprecated alias of
+> `/sudoai/2d-mockup/render` (sunsets 2026-09-30); this SDK calls the canonical
+> endpoint directly.
 
 ### Uploads
 
@@ -206,10 +244,12 @@ console.log(done.mockupUuid)
 const account = await client.account.get()
 
 console.log(account.account.email)
-console.log(account.subscription.plan)      // 'free' | 'pro' | 'scale'
-console.log(account.usage.creditsRemaining) // 950
-console.log(account.usage.creditsLimit)     // 1000
-console.log(account.apiKey.totalRequests)   // 1234
+console.log(account.subscription.plan)          // plan slug
+console.log(account.subscription.tier)          // plan tier
+console.log(account.subscription.billingChannel) // 'shopify' | 'stripe' | 'none'
+console.log(account.usage.creditsRemaining)     // 950
+console.log(account.usage.creditsLimit)         // 1000
+console.log(account.apiKey.totalRequests)       // 1234
 ```
 
 ### Studio
@@ -246,9 +286,15 @@ await client.webhooks.list()
 await client.webhooks.update(endpoint.id, { enabled: false })
 await client.webhooks.rotateSecret(endpoint.id) // returns the new secret
 await client.webhooks.test(endpoint.id)         // send a test delivery
-await client.webhooks.listDeliveries(endpoint.id)
-await client.webhooks.replayDelivery(endpoint.id, deliveryId)
 await client.webhooks.delete(endpoint.id)
+
+// Per-endpoint delivery log (optional status / event_type / limit filters):
+await client.webhooks.listDeliveries(endpoint.id, { status: 'failed', limit: 50 })
+await client.webhooks.replayDelivery(endpoint.id, deliveryId) // replay one
+await client.webhooks.replayFailed(endpoint.id)               // bulk replay all failed/dead
+
+// Cross-endpoint Events feed (recent deliveries across every endpoint):
+const events = await client.webhooks.listEvents({ status: 'failed', limit: 100 })
 ```
 
 #### Verifying signatures

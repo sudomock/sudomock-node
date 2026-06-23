@@ -1,5 +1,10 @@
 import type { HttpClient } from '../client'
-import type { Job, WaitForJobOptions } from '../types'
+import type {
+  Job,
+  JobListResult,
+  ListJobsParams,
+  WaitForJobOptions,
+} from '../types'
 import { TimeoutError } from '../errors'
 
 /** Default poll interval while waiting for a job (ms). */
@@ -41,6 +46,40 @@ export function toJob(body: unknown): Job {
 
 export class JobsResource {
   constructor(private readonly client: HttpClient) {}
+
+  /**
+   * List your async jobs (renders, videos, uploads), newest first.
+   *
+   * Keyset-paginated: pass the returned `nextCursor` back as `cursor` to fetch
+   * the next page. Filter by `kind` and/or `mockupUuid`.
+   *
+   * @example
+   * ```ts
+   * const { jobs, nextCursor } = await client.jobs.list({ kind: 'video', limit: 50 })
+   * if (nextCursor) {
+   *   const next = await client.jobs.list({ cursor: nextCursor })
+   * }
+   * ```
+   */
+  async list(params: ListJobsParams = {}): Promise<JobListResult> {
+    const data = await this.client.request<{
+      jobs?: unknown[]
+      nextCursor?: string | null
+    }>({
+      method: 'GET',
+      path: '/api/v1/jobs',
+      query: {
+        kind: params.kind,
+        mockup_uuid: params.mockupUuid,
+        limit: params.limit,
+        cursor: params.cursor,
+      },
+    })
+    return {
+      jobs: (data.jobs ?? []).map(toJob),
+      nextCursor: data.nextCursor ?? null,
+    }
+  }
 
   /**
    * Fetch the current state of an async job (render or video).
