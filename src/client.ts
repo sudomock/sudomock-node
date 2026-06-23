@@ -62,6 +62,13 @@ export interface RequestOptions {
   query?: Record<string, string | number | undefined>
   /** Override default timeout for this request (ms) */
   timeout?: number
+  /**
+   * Return the FULL camelCased response envelope instead of unwrapping its
+   * `data` field. Needed for endpoints that put pagination metadata
+   * (`total` / `limit` / `offset`) as siblings of `data` rather than nesting it
+   * inside `data` -- the default unwrap would drop those siblings.
+   */
+  rawEnvelope?: boolean
 }
 
 export interface ClientConfig {
@@ -139,8 +146,12 @@ export class HttpClient {
 
         // Success -- unwrap the API envelope and convert keys
         // The API wraps data in { success, data, message? }
-        // Some endpoints (like studio/create-session) don't use the data wrapper
-        const data = responseBody['data'] ?? responseBody
+        // Some endpoints (like studio/create-session) don't use the data wrapper.
+        // `rawEnvelope` keeps the whole body so sibling pagination metadata
+        // (total/limit/offset alongside `data`) survives.
+        const data = options.rawEnvelope
+          ? responseBody
+          : (responseBody['data'] ?? responseBody)
         return { status: response.status, data: keysToCamel(data) as T }
       } catch (err) {
         if (err instanceof SudoMockError) {

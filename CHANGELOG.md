@@ -21,8 +21,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   (cross-endpoint feed). Standalone `verifyWebhookSignature` (split
   `X-SudoMock-Signature` / `X-SudoMock-Timestamp` headers, timestamp tolerance).
 - **SudoAI 2D mockups (`client.ai`):** `list` / `get` / `delete` 2D mockups.
+  `ai.list()` now returns a paginated `TwoDMockupListResult`
+  (`{ mockups, total, limit, offset }`) instead of a bare array, surfacing the
+  backend pagination metadata.
 - `SmartObjectAsset.contentType`, render `AdjustmentLayers.opacity` / `vibrance`
   / `blur`, sync render `renderUuid`, `SubscriptionInfo.billingChannel`.
+- `AIPlacement.scale` / `AIPlacement.rotation` (preferred over the legacy
+  `size` / `rotate`); video `Job.outcomeTier`; `jobs.list()` item display
+  fields `mockupName` / `posterUrl` (alongside `durationSeconds` / `audio`).
+- `createVideo` `video.durationSeconds` is now optional (defaults to 5) and the
+  per-call `webhook` accepts an arbitrary object (`VideoWebhookOverride`), not
+  just `{ url }`.
+- `webhooks.create` `eventTypes` is now optional (defaults to `[]` = all events).
 
 ### Changed
 

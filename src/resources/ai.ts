@@ -3,6 +3,7 @@ import type {
   AIRenderParams,
   AIRenderResult,
   TwoDMockup,
+  TwoDMockupListResult,
   List2dMockupsParams,
 } from '../types'
 
@@ -59,22 +60,43 @@ export class AIResource {
   }
 
   /**
-   * List your 2D mockups (newest first).
+   * List your 2D mockups (newest first), with pagination metadata.
+   *
+   * Returns the page of mockups plus `total` / `limit` / `offset` so callers
+   * can drive "load more" without a separate count call.
    *
    * @example
    * ```ts
-   * const mockups = await client.ai.list({ limit: 50 })
+   * const { mockups, total } = await client.ai.list({ limit: 50 })
    * ```
    */
-  async list(params: List2dMockupsParams = {}): Promise<TwoDMockup[]> {
-    return this.client.request<TwoDMockup[]>({
+  async list(
+    params: List2dMockupsParams = {},
+  ): Promise<TwoDMockupListResult> {
+    // The BE returns `{ data: [...], total, limit, offset, success }` -- the
+    // pagination lives as siblings of `data`, so we keep the raw envelope
+    // (the default unwrap would discard total/limit/offset).
+    const body = await this.client.request<{
+      data?: TwoDMockup[]
+      total?: number
+      limit?: number
+      offset?: number
+    }>({
       method: 'GET',
       path: '/api/v1/sudoai/2d-mockups',
       query: {
         limit: params.limit,
         offset: params.offset,
       },
+      rawEnvelope: true,
     })
+
+    return {
+      mockups: body.data ?? [],
+      total: body.total ?? 0,
+      limit: body.limit ?? params.limit ?? 20,
+      offset: body.offset ?? params.offset ?? 0,
+    }
   }
 
   /**

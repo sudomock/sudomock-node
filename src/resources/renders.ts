@@ -103,7 +103,11 @@ export class RendersResource {
       smartObjects: params.smartObjects,
       exportOptions: params.exportOptions,
       imageUrl: params.imageUrl,
-      video: params.video,
+      video: {
+        ...params.video,
+        // Default clip length to 5s when the caller omits it (BE default too).
+        durationSeconds: params.video.durationSeconds ?? 5,
+      },
       webhook: params.webhook,
       exportLabel: params.exportLabel,
     }

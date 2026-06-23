@@ -90,6 +90,25 @@ describe('renders.createVideo()', () => {
     expect(job.jobId).toBe('66666666-6666-6666-6666-666666666666')
   })
 
+  it('surfaces outcomeTier from the video 202 response', async () => {
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders/video`, () =>
+        HttpResponse.json(
+          { ...MOCK_VIDEO_ACCEPTED_RESPONSE, outcome_tier: 'premium' },
+          { status: 202 },
+        ),
+      ),
+    )
+
+    const client = createClient()
+    const job = await client.renders.createVideo({
+      mockupId: 'mock-uuid',
+      video: { durationSeconds: 5 },
+    })
+
+    expect(job.outcomeTier).toBe('premium')
+  })
+
   it('sends video options in snake_case', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
@@ -161,6 +180,11 @@ describe('jobs.list()', () => {
               kind: 'video',
               status: 'succeeded',
               result_url: 'https://cdn.sudomock.com/v/clip.mp4',
+              // List display fields (hand-picked from extra_data by the BE).
+              duration_seconds: 6,
+              audio: true,
+              mockup_name: 'Hero Tee',
+              poster_url: 'https://cdn.sudomock.com/v/poster.webp',
             },
           ],
           next_cursor: 'cursor-abc',
@@ -183,6 +207,11 @@ describe('jobs.list()', () => {
     expect(page.jobs).toHaveLength(1)
     expect(page.jobs[0]!.jobId).toBe(ASYNC_UUID)
     expect(page.jobs[0]!.kind).toBe('video')
+    // List display fields are surfaced (camelCased).
+    expect(page.jobs[0]!.durationSeconds).toBe(6)
+    expect(page.jobs[0]!.audio).toBe(true)
+    expect(page.jobs[0]!.mockupName).toBe('Hero Tee')
+    expect(page.jobs[0]!.posterUrl).toBe('https://cdn.sudomock.com/v/poster.webp')
     expect(page.nextCursor).toBe('cursor-abc')
   })
 

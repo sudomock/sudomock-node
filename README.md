@@ -204,7 +204,7 @@ console.log(result.printFiles[0].exportFormat) // 'webp'
 Manage the 2D-mockup catalog:
 
 ```typescript
-const mockups = await client.ai.list({ limit: 50 })
+const { mockups, total } = await client.ai.list({ limit: 50 })
 const mockup = await client.ai.get('mockup-uuid')
 await client.ai.delete('mockup-uuid')
 ```

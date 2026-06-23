@@ -184,10 +184,16 @@ describe('ai 2D-mockup catalog', () => {
     )
 
     const client = createClient()
-    const mockups = await client.ai.list({ limit: 20 })
-    expect(mockups).toHaveLength(1)
-    expect(mockups[0]!.mockupId).toBe('99999999-9999-9999-9999-999999999999')
-    expect(mockups[0]!.sourceWidth).toBe(2000)
+    const page = await client.ai.list({ limit: 20 })
+    // Pagination metadata (total/limit/offset) is surfaced alongside the page.
+    expect(page.total).toBe(1)
+    expect(page.limit).toBe(20)
+    expect(page.offset).toBe(0)
+    expect(page.mockups).toHaveLength(1)
+    expect(page.mockups[0]!.mockupId).toBe(
+      '99999999-9999-9999-9999-999999999999',
+    )
+    expect(page.mockups[0]!.sourceWidth).toBe(2000)
   })
 
   it('gets a single 2D mockup', async () => {
@@ -247,6 +253,31 @@ describe('renders.createVideo() — raw-image mode', () => {
     expect(video['motion']).toBe('showcase')
     const webhook = capturedBody['webhook'] as Record<string, unknown>
     expect(webhook['url']).toBe('https://example.com/hooks')
+  })
+
+  it('defaults durationSeconds to 5 and forwards arbitrary webhook fields', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders/video`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(MOCK_VIDEO_ACCEPTED_RESPONSE, { status: 202 })
+      }),
+    )
+
+    const client = createClient()
+    await client.renders.createVideo({
+      imageUrl: 'https://example.com/art.png',
+      // durationSeconds intentionally omitted -> should default to 5.
+      video: { audio: true },
+      // BE accepts an arbitrary webhook dict; extra keys must pass through.
+      webhook: { url: 'https://example.com/hooks', secretHeader: 'x-token' },
+    })
+
+    const video = capturedBody['video'] as Record<string, unknown>
+    expect(video['duration_seconds']).toBe(5)
+    const webhook = capturedBody['webhook'] as Record<string, unknown>
+    expect(webhook['url']).toBe('https://example.com/hooks')
+    expect(webhook['secret_header']).toBe('x-token')
   })
 })
 
