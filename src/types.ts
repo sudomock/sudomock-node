@@ -226,8 +226,8 @@ export interface CreateRenderParams {
    *
    * When `true`, the API enqueues the render and immediately returns a
    * {@link Job} (HTTP 202) instead of blocking until the render completes.
-   * Poll the job with `client.jobs.retrieve(job.renderUuid)` or use
-   * `client.jobs.waitForJob(job.renderUuid)` to await the result.
+   * Poll the job with `client.jobs.retrieve(job.jobId)` or use
+   * `client.jobs.waitForJob(job.jobId)` to await the result.
    *
    * Default: `false` (synchronous, returns a {@link RenderResult}).
    */
@@ -384,7 +384,7 @@ export interface UploadParams {
    *
    * When `true`, the API enqueues processing and immediately returns a
    * {@link Job} (HTTP 202). PSD upload is FREE (0 credits) either way. Poll the
-   * job with `client.jobs.retrieve(job.renderUuid)` / `waitForJob`.
+   * job with `client.jobs.retrieve(job.jobId)` / `waitForJob`.
    *
    * Default: `false` (synchronous, returns an {@link UploadResult}).
    */
@@ -426,7 +426,7 @@ export type JobState = JobStatus
 /**
  * Pay-as-you-go cost breakdown for a job. Present (non-null) ONLY for PAYG
  * jobs; `null` for credit/subscription jobs. Mirrors the nested `payg` object
- * from `GET /jobs/{renderUuid}`.
+ * from `GET /jobs/{jobId}`.
  */
 export interface JobPayg {
   /** Billable credit count for the PAYG job. */
@@ -439,17 +439,17 @@ export interface JobPayg {
 
 /**
  * An async job, returned by `POST /renders` (`isAsync`), `POST /renders/video`,
- * `POST /psd/upload` (`isAsync`), and `GET /jobs/{renderUuid}`.
+ * `POST /psd/upload` (`isAsync`), and `GET /jobs/{jobId}`.
  */
 export interface Job {
   /** Stable identifier for the job; also the poll key. */
-  renderUuid: string
+  jobId: string
   /** What the job produces. */
   kind: JobKind
   /** Current lifecycle status (API field: `status`). */
   status: JobStatus
   /**
-   * Relative poll URL, e.g. `/api/v1/jobs/{renderUuid}`. Present only on the
+   * Relative poll URL, e.g. `/api/v1/jobs/{jobId}`. Present only on the
    * 202 submit response, not on the `GET /jobs` poll.
    */
   statusUrl?: string

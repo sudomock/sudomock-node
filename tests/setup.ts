@@ -134,14 +134,14 @@ export const MOCK_SESSION_RESPONSE = {
 
 // 202 Accepted body for async render/upload/video submissions
 export const MOCK_JOB_ACCEPTED_RESPONSE = {
-  render_uuid: '55555555-5555-5555-5555-555555555555',
+  job_id: '55555555-5555-5555-5555-555555555555',
   kind: 'render',
   status: 'queued',
   status_url: '/api/v1/jobs/55555555-5555-5555-5555-555555555555',
 }
 
 export const MOCK_VIDEO_ACCEPTED_RESPONSE = {
-  render_uuid: '66666666-6666-6666-6666-666666666666',
+  job_id: '66666666-6666-6666-6666-666666666666',
   kind: 'video',
   status: 'queued',
   status_url: '/api/v1/jobs/66666666-6666-6666-6666-666666666666',
@@ -151,7 +151,7 @@ export const MOCK_VIDEO_ACCEPTED_RESPONSE = {
 export const MOCK_JOB_SUCCEEDED_RESPONSE = {
   success: true,
   data: {
-    render_uuid: '55555555-5555-5555-5555-555555555555',
+    job_id: '55555555-5555-5555-5555-555555555555',
     kind: 'render',
     status: 'succeeded',
     model: null,
@@ -170,7 +170,7 @@ export const MOCK_JOB_SUCCEEDED_RESPONSE = {
 export const MOCK_JOB_PAYG_SUCCEEDED_RESPONSE = {
   success: true,
   data: {
-    render_uuid: '55555555-5555-5555-5555-555555555555',
+    job_id: '55555555-5555-5555-5555-555555555555',
     kind: 'render',
     status: 'succeeded',
     model: null,

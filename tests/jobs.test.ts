@@ -34,7 +34,7 @@ describe('renders.create({ isAsync: true })', () => {
     })
 
     // `job` is typed as Job via the overload -- no `url`/`printFiles` access.
-    expect(job.renderUuid).toBe(ASYNC_UUID)
+    expect(job.jobId).toBe(ASYNC_UUID)
     expect(job.kind).toBe('render')
     expect(job.status).toBe('queued')
     expect(job.statusUrl).toBe(`/api/v1/jobs/${ASYNC_UUID}`)
@@ -87,7 +87,7 @@ describe('renders.createVideo()', () => {
     })
 
     expect(job.kind).toBe('video')
-    expect(job.renderUuid).toBe('66666666-6666-6666-6666-666666666666')
+    expect(job.jobId).toBe('66666666-6666-6666-6666-666666666666')
   })
 
   it('sends video options in snake_case', async () => {
@@ -157,7 +157,7 @@ describe('jobs.list()', () => {
         return HttpResponse.json({
           jobs: [
             {
-              render_uuid: ASYNC_UUID,
+              job_id: ASYNC_UUID,
               kind: 'video',
               status: 'succeeded',
               result_url: 'https://cdn.sudomock.com/v/clip.mp4',
@@ -181,7 +181,7 @@ describe('jobs.list()', () => {
     expect(url.searchParams.get('limit')).toBe('50')
 
     expect(page.jobs).toHaveLength(1)
-    expect(page.jobs[0]!.renderUuid).toBe(ASYNC_UUID)
+    expect(page.jobs[0]!.jobId).toBe(ASYNC_UUID)
     expect(page.jobs[0]!.kind).toBe('video')
     expect(page.nextCursor).toBe('cursor-abc')
   })
@@ -209,7 +209,7 @@ describe('jobs.waitForJob()', () => {
         if (calls < 3) {
           return HttpResponse.json({
             success: true,
-            data: { render_uuid: ASYNC_UUID, kind: 'render', status: 'running' },
+            data: { job_id: ASYNC_UUID, kind: 'render', status: 'running' },
           })
         }
         return HttpResponse.json(MOCK_JOB_SUCCEEDED_RESPONSE)
@@ -228,7 +228,7 @@ describe('jobs.waitForJob()', () => {
         return HttpResponse.json({
           success: true,
           data: {
-            render_uuid: ASYNC_UUID,
+            job_id: ASYNC_UUID,
             kind: 'render',
             status: 'failed',
             error: 'render engine error',
@@ -248,7 +248,7 @@ describe('jobs.waitForJob()', () => {
       http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () => {
         return HttpResponse.json({
           success: true,
-          data: { render_uuid: ASYNC_UUID, kind: 'render', status: 'running' },
+          data: { job_id: ASYNC_UUID, kind: 'render', status: 'running' },
         })
       }),
     )
@@ -273,7 +273,7 @@ describe('uploads.create({ isAsync: true })', () => {
       psdFileUrl: 'https://example.com/x.psd',
       isAsync: true,
     })
-    expect(job.renderUuid).toBe(ASYNC_UUID)
+    expect(job.jobId).toBe(ASYNC_UUID)
     expect(job.status).toBe('queued')
   })
 
