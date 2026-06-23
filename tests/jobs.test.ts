@@ -148,6 +148,58 @@ describe('jobs.retrieve()', () => {
   })
 })
 
+describe('jobs.list()', () => {
+  it('lists jobs with filters and returns nextCursor', async () => {
+    let capturedUrl = ''
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs`, ({ request }) => {
+        capturedUrl = request.url
+        return HttpResponse.json({
+          jobs: [
+            {
+              render_uuid: ASYNC_UUID,
+              kind: 'video',
+              status: 'succeeded',
+              result_url: 'https://cdn.sudomock.com/v/clip.mp4',
+            },
+          ],
+          next_cursor: 'cursor-abc',
+        })
+      }),
+    )
+
+    const client = createClient()
+    const page = await client.jobs.list({
+      kind: 'video',
+      mockupUuid: 'mock-uuid',
+      limit: 50,
+    })
+
+    const url = new URL(capturedUrl)
+    expect(url.searchParams.get('kind')).toBe('video')
+    expect(url.searchParams.get('mockup_uuid')).toBe('mock-uuid')
+    expect(url.searchParams.get('limit')).toBe('50')
+
+    expect(page.jobs).toHaveLength(1)
+    expect(page.jobs[0]!.renderUuid).toBe(ASYNC_UUID)
+    expect(page.jobs[0]!.kind).toBe('video')
+    expect(page.nextCursor).toBe('cursor-abc')
+  })
+
+  it('defaults nextCursor to null when absent', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs`, () =>
+        HttpResponse.json({ jobs: [] }),
+      ),
+    )
+
+    const client = createClient()
+    const page = await client.jobs.list()
+    expect(page.jobs).toEqual([])
+    expect(page.nextCursor).toBeNull()
+  })
+})
+
 describe('jobs.waitForJob()', () => {
   it('polls until the job reaches a terminal state', async () => {
     let calls = 0

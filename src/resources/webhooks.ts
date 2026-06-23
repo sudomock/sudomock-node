@@ -6,6 +6,9 @@ import type {
   UpdateWebhookEndpointParams,
   WebhookDelivery,
   VerifyWebhookOptions,
+  ListDeliveriesParams,
+  ListWebhookEventsParams,
+  ReplayFailedResult,
 } from '../types'
 
 /**
@@ -111,12 +114,44 @@ export class WebhooksResource {
   }
 
   /**
-   * List recent delivery attempts for an endpoint.
+   * Recent deliveries across ALL of your endpoints (the dashboard Events feed).
+   * Optionally filter by status and/or event type.
+   *
+   * @example
+   * ```ts
+   * const events = await client.webhooks.listEvents({ status: 'failed', limit: 50 })
+   * ```
    */
-  async listDeliveries(id: string): Promise<WebhookDelivery[]> {
+  async listEvents(
+    params: ListWebhookEventsParams = {},
+  ): Promise<WebhookDelivery[]> {
+    return this.client.request<WebhookDelivery[]>({
+      method: 'GET',
+      path: '/api/v1/webhook-endpoints/events',
+      query: {
+        status: params.status,
+        event_type: params.eventType,
+        limit: params.limit,
+      },
+    })
+  }
+
+  /**
+   * List recent delivery attempts for an endpoint. Optionally filter by status
+   * and/or event type, and cap the row count.
+   */
+  async listDeliveries(
+    id: string,
+    params: ListDeliveriesParams = {},
+  ): Promise<WebhookDelivery[]> {
     return this.client.request<WebhookDelivery[]>({
       method: 'GET',
       path: `/api/v1/webhook-endpoints/${id}/deliveries`,
+      query: {
+        status: params.status,
+        event_type: params.eventType,
+        limit: params.limit,
+      },
     })
   }
 
@@ -127,6 +162,22 @@ export class WebhooksResource {
     await this.client.request<void>({
       method: 'POST',
       path: `/api/v1/webhook-endpoints/${id}/deliveries/${deliveryId}/replay`,
+    })
+  }
+
+  /**
+   * Replay ALL failed/dead deliveries for an endpoint (bulk recovery after an
+   * outage). Returns how many deliveries were re-enqueued.
+   *
+   * @example
+   * ```ts
+   * const { count } = await client.webhooks.replayFailed(endpointId)
+   * ```
+   */
+  async replayFailed(id: string): Promise<ReplayFailedResult> {
+    return this.client.request<ReplayFailedResult>({
+      method: 'POST',
+      path: `/api/v1/webhook-endpoints/${id}/deliveries/replay-failed`,
     })
   }
 }

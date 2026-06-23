@@ -8,6 +8,8 @@ import {
   server,
   MOCK_RENDER_RESPONSE,
   MOCK_AI_RENDER_RESPONSE,
+  MOCK_2D_MOCKUP,
+  MOCK_VIDEO_ACCEPTED_RESPONSE,
 } from './setup'
 
 function createClient() {
@@ -103,12 +105,17 @@ describe('renders.create()', () => {
   })
 })
 
-describe('ai.render()', () => {
-  it('renders with AI and returns URL', async () => {
+describe('ai.render() — 2D mockup', () => {
+  it('renders artwork onto a 2D mockup and returns URL', async () => {
     const client = createClient()
     const result = await client.ai.render({
-      sourceUrl: 'https://example.com/product.jpg',
-      artworkUrl: 'https://example.com/design.png',
+      mockupId: '11111111-1111-1111-1111-111111111111',
+      printAreas: [
+        {
+          uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          artworkUrl: 'https://example.com/design.png',
+        },
+      ],
     })
 
     expect(result.printFiles).toHaveLength(1)
@@ -116,15 +123,17 @@ describe('ai.render()', () => {
       'https://cdn.sudomock.com/renders/sudoai/abc123.png',
     )
     expect(result.printFiles[0]!.durationMs).toBe(2340)
-    expect(result.printFiles[0]!.confidence).toBe(0.95)
+    expect(result.printFiles[0]!.exportFormat).toBe('png')
   })
 
-  it('sends all AI render params in snake_case', async () => {
+  it('posts the 2D render body in snake_case to /sudoai/2d-mockup/render', async () => {
     let capturedBody: Record<string, unknown> = {}
+    let capturedPath = ''
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/render`,
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/render`,
         async ({ request }) => {
+          capturedPath = new URL(request.url).pathname
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
         },
@@ -133,33 +142,111 @@ describe('ai.render()', () => {
 
     const client = createClient()
     await client.ai.render({
-      sourceUrl: 'https://example.com/product.jpg',
-      artworkUrl: 'https://example.com/design.png',
-      productType: 't-shirt',
-      segmentIndex: 2,
-      printAreaX: 100,
-      printAreaY: 200,
-      adjustments: {
-        warpStrength: 0.8,
-        textureStrength: 0.5,
-        edgeExpand: 3,
-      },
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        {
+          uuid: 'pa-uuid',
+          artworkUrl: 'https://example.com/design.png',
+          adjustments: { opacity: 80, vibrance: 10, blur: 0 },
+        },
+      ],
+      exportOptions: { imageFormat: 'webp', imageSize: 2048, quality: 90 },
     })
 
-    expect(capturedBody['source_url']).toBe(
-      'https://example.com/product.jpg',
+    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockup/render')
+    expect(capturedBody['mockup_uuid']).toBe('mockup-uuid')
+    const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
+    expect(printAreas).toHaveLength(1)
+    expect(printAreas[0]!['uuid']).toBe('pa-uuid')
+    expect(printAreas[0]!['artwork_url']).toBe('https://example.com/design.png')
+    const adj = printAreas[0]!['adjustments'] as Record<string, unknown>
+    expect(adj['opacity']).toBe(80)
+    expect(adj['vibrance']).toBe(10)
+    const exportOpts = capturedBody['export_options'] as Record<string, unknown>
+    expect(exportOpts['image_format']).toBe('webp')
+    expect(exportOpts['image_size']).toBe(2048)
+    expect(exportOpts['quality']).toBe(90)
+  })
+})
+
+describe('ai 2D-mockup catalog', () => {
+  it('lists 2D mockups', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, () =>
+        HttpResponse.json({
+          success: true,
+          data: [MOCK_2D_MOCKUP],
+          total: 1,
+          limit: 20,
+          offset: 0,
+        }),
+      ),
     )
-    expect(capturedBody['artwork_url']).toBe(
-      'https://example.com/design.png',
+
+    const client = createClient()
+    const mockups = await client.ai.list({ limit: 20 })
+    expect(mockups).toHaveLength(1)
+    expect(mockups[0]!.mockupId).toBe('99999999-9999-9999-9999-999999999999')
+    expect(mockups[0]!.sourceWidth).toBe(2000)
+  })
+
+  it('gets a single 2D mockup', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, () =>
+        HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
+      ),
     )
-    expect(capturedBody['product_type']).toBe('t-shirt')
-    expect(capturedBody['segment_index']).toBe(2)
-    expect(capturedBody['print_area_x']).toBe(100)
-    expect(capturedBody['print_area_y']).toBe(200)
-    const adjustments = capturedBody['adjustments'] as Record<string, unknown>
-    expect(adjustments['warp_strength']).toBe(0.8)
-    expect(adjustments['texture_strength']).toBe(0.5)
-    expect(adjustments['edge_expand']).toBe(3)
+
+    const client = createClient()
+    const mockup = await client.ai.get('99999999-9999-9999-9999-999999999999')
+    expect(mockup.name).toBe('2D Tee')
+    expect(mockup.quads?.[0]!.printAreaId).toBe(
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    )
+  })
+
+  it('deletes a 2D mockup', async () => {
+    let hitPath = ''
+    server.use(
+      http.delete(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, ({ request }) => {
+        hitPath = new URL(request.url).pathname
+        return HttpResponse.json({ success: true, data: { deleted: true } })
+      }),
+    )
+
+    const client = createClient()
+    await expect(
+      client.ai.delete('99999999-9999-9999-9999-999999999999'),
+    ).resolves.toBeUndefined()
+    expect(hitPath).toBe(
+      '/api/v1/sudoai/2d-mockup/99999999-9999-9999-9999-999999999999',
+    )
+  })
+})
+
+describe('renders.createVideo() — raw-image mode', () => {
+  it('sends image_url and webhook in snake_case (no mockup)', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders/video`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(MOCK_VIDEO_ACCEPTED_RESPONSE, { status: 202 })
+      }),
+    )
+
+    const client = createClient()
+    await client.renders.createVideo({
+      imageUrl: 'https://example.com/art.png',
+      video: { durationSeconds: 5, motion: 'showcase' },
+      webhook: { url: 'https://example.com/hooks' },
+    })
+
+    expect(capturedBody['image_url']).toBe('https://example.com/art.png')
+    expect(capturedBody['mockup_uuid']).toBeUndefined()
+    const video = capturedBody['video'] as Record<string, unknown>
+    expect(video['motion']).toBe('showcase')
+    const webhook = capturedBody['webhook'] as Record<string, unknown>
+    expect(webhook['url']).toBe('https://example.com/hooks')
   })
 })
 

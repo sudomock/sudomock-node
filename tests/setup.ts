@@ -61,12 +61,30 @@ export const MOCK_AI_RENDER_RESPONSE = {
       {
         export_path: 'https://cdn.sudomock.com/renders/sudoai/abc123.png',
         duration_ms: 2340,
-        segment_index: 0,
-        confidence: 0.95,
         export_format: 'png',
       },
     ],
   },
+}
+
+export const MOCK_2D_MOCKUP = {
+  mockup_id: '99999999-9999-9999-9999-999999999999',
+  name: '2D Tee',
+  status: 'ready',
+  thumbnail_url: 'https://cdn.sudomock.com/2d/thumb.webp',
+  watermarked_source_url: 'https://cdn.sudomock.com/2d/src.webp',
+  source_width: 2000,
+  source_height: 2000,
+  quads: [
+    {
+      print_area_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      points: [[0, 0], [1, 0], [1, 1], [0, 1]],
+      sort_order: 0,
+    },
+  ],
+  version: 1,
+  created_at: '2026-06-21T00:00:00Z',
+  updated_at: '2026-06-21T00:00:00Z',
 }
 
 export const MOCK_ACCOUNT_RESPONSE = {
@@ -260,8 +278,8 @@ export const handlers = [
     return HttpResponse.json(MOCK_RENDER_RESPONSE)
   }),
 
-  // AI Render
-  http.post(`${TEST_BASE_URL}/api/v1/sudoai/render`, ({ request }) => {
+  // AI 2D-mockup Render
+  http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/render`, ({ request }) => {
     const apiKey = request.headers.get('x-api-key')
     if (apiKey !== TEST_API_KEY) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })

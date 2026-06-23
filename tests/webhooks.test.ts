@@ -154,6 +154,73 @@ describe('webhooks CRUD', () => {
       `/api/v1/webhook-endpoints/${EP_ID}/deliveries/d-1/replay`,
     )
   })
+
+  it('filters per-endpoint deliveries by status/event_type/limit', async () => {
+    let capturedUrl = ''
+    server.use(
+      http.get(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints/:id/deliveries`,
+        ({ request }) => {
+          capturedUrl = request.url
+          return HttpResponse.json([MOCK_WEBHOOK_DELIVERY])
+        },
+      ),
+    )
+
+    const client = createClient()
+    await client.webhooks.listDeliveries(EP_ID, {
+      status: 'failed',
+      eventType: 'render.failed',
+      limit: 25,
+    })
+
+    const url = new URL(capturedUrl)
+    expect(url.searchParams.get('status')).toBe('failed')
+    expect(url.searchParams.get('event_type')).toBe('render.failed')
+    expect(url.searchParams.get('limit')).toBe('25')
+  })
+
+  it('lists cross-endpoint events feed', async () => {
+    let capturedPath = ''
+    let capturedUrl = ''
+    server.use(
+      http.get(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints/events`,
+        ({ request }) => {
+          capturedPath = new URL(request.url).pathname
+          capturedUrl = request.url
+          return HttpResponse.json([MOCK_WEBHOOK_DELIVERY])
+        },
+      ),
+    )
+
+    const client = createClient()
+    const events = await client.webhooks.listEvents({ status: 'failed', limit: 100 })
+    expect(capturedPath).toBe('/api/v1/webhook-endpoints/events')
+    expect(new URL(capturedUrl).searchParams.get('status')).toBe('failed')
+    expect(events[0]!.eventType).toBe('render.succeeded')
+  })
+
+  it('bulk-replays failed deliveries and returns the count', async () => {
+    let replayPath = ''
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints/:id/deliveries/replay-failed`,
+        ({ request }) => {
+          replayPath = new URL(request.url).pathname
+          return HttpResponse.json({ status: 'enqueued', count: 3 }, { status: 202 })
+        },
+      ),
+    )
+
+    const client = createClient()
+    const res = await client.webhooks.replayFailed(EP_ID)
+    expect(replayPath).toBe(
+      `/api/v1/webhook-endpoints/${EP_ID}/deliveries/replay-failed`,
+    )
+    expect(res.status).toBe('enqueued')
+    expect(res.count).toBe(3)
+  })
 })
 
 describe('verifyWebhookSignature() — split headers', () => {

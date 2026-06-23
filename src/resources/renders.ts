@@ -101,7 +101,10 @@ export class RendersResource {
     const body = {
       mockupUuid: params.mockupId,
       smartObjects: params.smartObjects,
+      exportOptions: params.exportOptions,
+      imageUrl: params.imageUrl,
       video: params.video,
+      webhook: params.webhook,
       exportLabel: params.exportLabel,
     }
 

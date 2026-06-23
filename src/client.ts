@@ -71,6 +71,9 @@ export interface ClientConfig {
   maxRetries: number
 }
 
+/** SDK version, surfaced in the User-Agent header. Keep in sync with package.json. */
+const SDK_VERSION = '1.2.0'
+
 /** Initial backoff in ms for exponential retry */
 const INITIAL_BACKOFF_MS = 500
 
@@ -207,7 +210,7 @@ export class HttpClient {
       'x-api-key': this.config.apiKey,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'User-Agent': 'sudomock-node/1.0.0',
+      'User-Agent': `sudomock-node/${SDK_VERSION}`,
     }
 
     const init: RequestInit = {
