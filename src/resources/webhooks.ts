@@ -62,7 +62,8 @@ export class WebhooksResource {
     return this.client.request<WebhookEndpoint>({
       method: 'POST',
       path: '/api/v1/webhook-endpoints',
-      body: params,
+      // Default to the wildcard subscription (all events) when omitted.
+      body: { ...params, eventTypes: params.eventTypes ?? [] },
     })
   }
 
