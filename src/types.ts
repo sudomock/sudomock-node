@@ -312,7 +312,20 @@ export interface AIPlacement {
   position?: string
   coverage?: number
   fit?: string
+  /**
+   * Scale multiplier applied to the artwork (0.01-10). Maps to the backend
+   * `SudoAIPlacement.scale` and OVERRIDES `coverage` + `fit` sizing. Prefer this
+   * over the deprecated `size` field.
+   */
+  scale?: number
+  /**
+   * Rotation in degrees, clockwise positive (-360 to 360). Maps to the backend
+   * `SudoAIPlacement.rotation`. Prefer this over the deprecated `rotate` field.
+   */
+  rotation?: number
+  /** @deprecated Use {@link AIPlacement.rotation}. Legacy rotation in degrees. */
   rotate?: number
+  /** @deprecated Use {@link AIPlacement.scale}. Legacy explicit size in pixels. */
   size?: AssetSize
   offset?: AIPlacementOffset
 }
@@ -388,6 +401,24 @@ export interface List2dMockupsParams {
   offset?: number
 }
 
+/**
+ * An offset-paginated page of 2D mockups (`client.ai.list()`).
+ *
+ * The backend returns the pagination metadata (`total` / `limit` / `offset`)
+ * as siblings of the `data` array; this surfaces it so callers can drive
+ * "load more" without guessing whether another page exists.
+ */
+export interface TwoDMockupListResult {
+  /** The page of 2D mockups (newest first). */
+  mockups: TwoDMockup[]
+  /** Total number of 2D mockups matching the query (across all pages). */
+  total: number
+  /** Page size that was applied. */
+  limit: number
+  /** Offset that was applied. */
+  offset: number
+}
+
 // ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
@@ -437,9 +468,6 @@ export type JobKind = 'render' | 'video' | 'upload'
  * - `failed`    -- finished with an error; `error` is populated (terminal)
  */
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
-
-/** @deprecated Use {@link JobStatus}. Kept for backward compatibility. */
-export type JobState = JobStatus
 
 /**
  * Pay-as-you-go cost breakdown for a job. Present (non-null) ONLY for PAYG
@@ -496,10 +524,34 @@ export interface Job {
    * present on the `GET /jobs` poll.
    */
   estimatedCredits?: number | null
-  /** Clip duration in seconds, echoed on the video 202 submit response. */
+  /**
+   * UX-facing quality label for the auto-routed video model (e.g. `'standard'`,
+   * `'premium'`), echoed on the video 202 submit response alongside the real
+   * `model` id. Not present on the `GET /jobs` poll.
+   */
+  outcomeTier?: string | null
+  /**
+   * Clip duration in seconds. Echoed on the video 202 submit response and
+   * surfaced as a list display field on `jobs.list()` items (null for
+   * non-video kinds).
+   */
   durationSeconds?: number | null
-  /** Whether audio was generated, echoed on the video 202 submit response. */
+  /**
+   * Whether audio was generated. Echoed on the video 202 submit response and
+   * surfaced as a list display field on `jobs.list()` items (null for
+   * non-video kinds).
+   */
   audio?: boolean | null
+  /**
+   * Source mockup's display name. List-only display field on `jobs.list()`
+   * items; `null` when unavailable (e.g. raw-image video, upload).
+   */
+  mockupName?: string | null
+  /**
+   * URL of the i2v seed-frame still (video poster). List-only display field on
+   * `jobs.list()` items; `null` until produced / for non-video kinds.
+   */
+  posterUrl?: string | null
 }
 
 /** Options for {@link JobsResource.waitForJob}. */
@@ -536,10 +588,11 @@ export interface JobListResult {
 /** Video-specific options for {@link CreateVideoParams}. */
 export interface VideoOptions {
   /**
-   * Clip duration in seconds. Must be one of the durations the chosen model
-   * allows -- an unsupported value is rejected by the API with a 400.
+   * Clip duration in seconds (default: 5). Must be one of the durations the
+   * chosen model allows -- an unsupported value is rejected by the API with a
+   * 400.
    */
-  durationSeconds: number
+  durationSeconds?: number
   /** Include generated audio (default: false). */
   audio?: boolean
   /**
@@ -582,9 +635,22 @@ export interface CreateVideoParams {
    * Per-call webhook override, e.g. `{ url: 'https://example.com/hooks' }`.
    * Delivered when the video job completes.
    */
-  webhook?: { url: string }
+  webhook?: VideoWebhookOverride
   /** Optional label for the output file. */
   exportLabel?: string
+}
+
+/**
+ * Per-call completion webhook override for {@link CreateVideoParams.webhook}.
+ *
+ * The backend accepts an arbitrary webhook object (`Optional[Dict[str, Any]]`);
+ * `url` is the meaningful field, but additional keys are forwarded as-is.
+ */
+export interface VideoWebhookOverride {
+  /** Destination URL the completion delivery is POSTed to. */
+  url: string
+  /** Any additional fields the backend accepts (forwarded verbatim). */
+  [key: string]: unknown
 }
 
 // ---------------------------------------------------------------------------
@@ -624,8 +690,11 @@ export interface WebhookEndpoint {
 export interface CreateWebhookEndpointParams {
   /** Destination URL (must be HTTPS). */
   url: string
-  /** Event types to subscribe to (empty = all events). */
-  eventTypes: WebhookEvent[]
+  /**
+   * Event types to subscribe to. Omit or pass `[]` to subscribe to ALL events
+   * (the backend treats an empty list as a wildcard). Default: `[]`.
+   */
+  eventTypes?: WebhookEvent[]
   /** Optional description. */
   description?: string
 }
