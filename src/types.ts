@@ -151,11 +151,19 @@ export interface AssetSize {
   height: number
 }
 
+/**
+ * Custom position override for a render asset.
+ *
+ * Maps to the backend `AssetInput.position` (`AssetPosition`), which is a
+ * top-left offset in pixels on the smart-object canvas. Use `size` (width /
+ * height) for dimensions -- the backend has NO width/height on the position
+ * object, so any width/height here would be silently dropped.
+ */
 export interface AssetPosition {
-  x: number
-  y: number
-  width: number
-  height: number
+  /** Top offset in pixels (Y axis). */
+  top?: number
+  /** Left offset in pixels (X axis). */
+  left?: number
 }
 
 export interface SmartObjectAsset {
@@ -284,9 +292,19 @@ export interface AIAdjustments {
   textureStrength?: number
 }
 
+/**
+ * Pixel offset of the artwork from its calculated position in a 2D print area.
+ *
+ * Maps to the backend `SudoAIPlacement.offset` (`AssetPosition`), which the
+ * backend normalizes into the modern `offset_x` / `offset_y` fields
+ * (`offset_x = left`, `offset_y = top`). Sending `{ x, y }` here would be
+ * dropped, leaving the offset at 0.
+ */
 export interface AIPlacementOffset {
-  x: number
-  y: number
+  /** Vertical offset in pixels (Y axis) -> backend `offset_y`. */
+  top?: number
+  /** Horizontal offset in pixels (X axis) -> backend `offset_x`. */
+  left?: number
 }
 
 /** Placement of the artwork within a print area. */
