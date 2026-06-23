@@ -82,8 +82,12 @@ export interface SmartObject {
   position: Position
   printAreaPresets: PrintAreaPreset[]
   layerName?: string | null
+  /** Distorted quad corners (Scale tier only; `null` otherwise). */
   quad?: number[][] | null
-  blendMode: string
+  /** Layer blend mode (optional on the BE; may be absent). */
+  blendMode?: string
+  /** Number of instances of this smart object in the PSD, when present. */
+  instanceCount?: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -118,11 +122,11 @@ export interface MockupListResult {
 // ---------------------------------------------------------------------------
 
 export interface ExportOptions {
-  /** Image format (default: 'png') */
+  /** Image format (default: 'webp'; 'jpeg' is normalized to 'jpg') */
   imageFormat?: 'png' | 'jpg' | 'webp'
-  /** Max width in pixels (default: 1920) */
+  /** Max width in pixels, 100-10000 (default: 2048) */
   imageSize?: number
-  /** Compression quality 1-100 (default: 95) */
+  /** Compression quality 1-100 (default: 90) */
   quality?: number
   /**
    * Print resolution tag embedded in the output file metadata (range 72-2400).
@@ -157,8 +161,10 @@ export interface AssetPosition {
 export interface SmartObjectAsset {
   /** URL of the artwork image */
   url?: string
-  /** Base64-encoded artwork image */
+  /** Base64-encoded artwork image (takes priority over `url`) */
   base64?: string
+  /** Override the asset MIME type (e.g. 'image/png', 'image/jpeg', 'image/webp', 'image/gif') */
+  contentType?: string
   /** Fit mode */
   fit?: 'fill' | 'contain' | 'cover'
   /** Rotation angle in degrees */
@@ -181,10 +187,18 @@ export interface SmartObjectColor {
 }
 
 export interface AdjustmentLayers {
+  /** Brightness adjustment (-150 to 150, default 0). */
   brightness?: number
+  /** Contrast adjustment (-100 to 100, default 0). */
   contrast?: number
+  /** Layer opacity (0 to 100, default 100). */
+  opacity?: number
+  /** Saturation adjustment (-100 to 100, default 0). */
   saturation?: number
-  hue?: number
+  /** Vibrance adjustment (-100 to 100, default 0). */
+  vibrance?: number
+  /** Gaussian blur (0 to 100, default 0). */
+  blur?: number
 }
 
 export interface RenderSmartObjectInput {
@@ -223,28 +237,50 @@ export interface CreateRenderParams {
 export interface PrintFile {
   exportPath: string
   smartObjectUuid: string
+  /**
+   * Render UUID for this output. Present on the sync render response (the route
+   * is authoritative over the schema model, which omits it). Use it to
+   * correlate a render with webhook / jobs records.
+   */
+  renderUuid?: string
 }
 
 export interface RenderResult {
   printFiles: PrintFile[]
+  /**
+   * Render UUID, present on the sync render response. Correlates this render
+   * with webhook deliveries and `GET /jobs/{renderUuid}` records.
+   */
+  renderUuid?: string
   /** Convenience accessor: URL of the first rendered file */
   url: string
 }
 
 // ---------------------------------------------------------------------------
-// AI Render
+// SudoAI 2D Mockups (client.ai)
 // ---------------------------------------------------------------------------
 
+/** Image adjustments applied to a 2D-mockup print area. */
 export interface AIAdjustments {
+  /** Brightness adjustment. */
   brightness?: number
+  /** Contrast adjustment. */
   contrast?: number
+  /** Layer opacity (0-100). */
   opacity?: number
+  /** Saturation adjustment. */
   saturation?: number
+  /** Vibrance adjustment. */
   vibrance?: number
+  /** Gaussian blur. */
   blur?: number
+  /** Blend mode for the overlay. */
   blendMode?: string
+  /** Warp strength for perspective fitting. */
   warpStrength?: number
+  /** Expand the print area edges. */
   edgeExpand?: number
+  /** Texture preservation strength. */
   textureStrength?: number
 }
 
@@ -253,6 +289,7 @@ export interface AIPlacementOffset {
   y: number
 }
 
+/** Placement of the artwork within a print area. */
 export interface AIPlacement {
   position?: string
   coverage?: number
@@ -262,34 +299,35 @@ export interface AIPlacement {
   offset?: AIPlacementOffset
 }
 
-export interface AIRenderParams {
-  /** URL of the source product image */
-  sourceUrl: string
-  /** URL of the artwork to place on the product */
+/** A single print area to render artwork (or a color) into. */
+export interface AIPrintArea {
+  /** Print-area UUID. */
+  uuid: string
+  /** URL of the artwork to place. Supply `artworkUrl` OR `color`. */
   artworkUrl?: string
-  /** Product type hint for better detection */
-  productType?: string
-  /** Segment index (from previous segmentation) */
-  segmentIndex?: number
-  /** Manual print area X coordinate */
-  printAreaX?: number
-  /** Manual print area Y coordinate */
-  printAreaY?: number
-  /** Color overlay */
+  /** Hex color overlay (e.g. '#ff0000'). Supply `artworkUrl` OR `color`. */
   color?: string
-  /** Image adjustments */
+  /** Image adjustments for this print area. */
   adjustments?: AIAdjustments
-  /** Artwork placement options */
+  /** Artwork placement options. */
   placement?: AIPlacement
-  /** Export options */
+}
+
+export interface AIRenderParams {
+  /** UUID of the existing 2D mockup to render artwork onto. */
+  mockupId: string
+  /** Print areas to render (at least one). */
+  printAreas: AIPrintArea[]
+  /** Export options. */
   exportOptions?: ExportOptions
 }
 
 export interface AIPrintFile {
+  /** URL of the rendered output. */
   exportPath: string
+  /** Render duration in milliseconds. */
   durationMs: number
-  segmentIndex: number
-  confidence: number
+  /** Output image format. */
   exportFormat: string
 }
 
@@ -297,6 +335,39 @@ export interface AIRenderResult {
   printFiles: AIPrintFile[]
   /** Convenience accessor: URL of the first rendered file */
   url: string
+}
+
+/** A single distorted-quad print area on a 2D mockup. */
+export interface TwoDMockupQuad {
+  printAreaId: string
+  points: number[][]
+  sortOrder: number
+}
+
+/** A 2D mockup as returned by `client.ai.get()` / `client.ai.list()`. */
+export interface TwoDMockup {
+  mockupId: string
+  name: string
+  status: string
+  thumbnailUrl: string | null
+  watermarkedSourceUrl: string | null
+  sourceWidth: number | null
+  sourceHeight: number | null
+  /** Quads (present on the single-get response). */
+  quads?: TwoDMockupQuad[]
+  /** Print areas (present on the list response). */
+  printAreas?: unknown[]
+  version: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** Pagination params for `client.ai.list()`. */
+export interface List2dMockupsParams {
+  /** Number of mockups to return (1-100, default: 20). */
+  limit?: number
+  /** Number of mockups to skip (default: 0). */
+  offset?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -421,6 +492,25 @@ export interface WaitForJobOptions {
   timeoutMs?: number
 }
 
+/** Filters for {@link JobsResource.list} (`GET /jobs`). */
+export interface ListJobsParams {
+  /** Only return jobs of this kind. */
+  kind?: JobKind
+  /** Only return jobs sourced from this mockup (raw-image videos excluded). */
+  mockupUuid?: string
+  /** Page size (1-50, default: 20). */
+  limit?: number
+  /** Opaque keyset cursor from a previous {@link JobListResult.nextCursor}. */
+  cursor?: string
+}
+
+/** A keyset page of async jobs, newest first (`GET /jobs`). */
+export interface JobListResult {
+  jobs: Job[]
+  /** Cursor for the next page, or `null` when there are no more results. */
+  nextCursor?: string | null
+}
+
 // ---------------------------------------------------------------------------
 // Video render
 // ---------------------------------------------------------------------------
@@ -435,6 +525,13 @@ export interface VideoOptions {
   /** Include generated audio (default: false). */
   audio?: boolean
   /**
+   * Camera motion style (default: `'ambient'`).
+   *
+   * - `ambient`  -- subtle, looping idle motion
+   * - `showcase` -- more pronounced product-showcase movement
+   */
+  motion?: 'ambient' | 'showcase'
+  /**
    * Force a specific model by id (overrides the auto-router). When omitted the
    * API auto-selects the model for your tier. An unknown/eliminated model id is
    * rejected with a 400.
@@ -443,12 +540,31 @@ export interface VideoOptions {
 }
 
 export interface CreateVideoParams {
-  /** Mockup UUID to animate. */
-  mockupId: string
-  /** Smart objects with assets (same shape as a still render). */
+  /**
+   * Mockup UUID to animate.
+   *
+   * - **Render mode:** required -- the worker renders the i2v input still from
+   *   this mockup + `smartObjects`.
+   * - **Raw-image mode:** optional -- pure association when animating an
+   *   `imageUrl` directly.
+   */
+  mockupId?: string
+  /** Smart objects with assets (render mode; same shape as a still render). */
   smartObjects?: RenderSmartObjectInput[]
+  /** Export options for the render-mode input still. */
+  exportOptions?: ExportOptions
+  /**
+   * Raw-image mode: a public HTTPS image URL to animate directly (mutually
+   * exclusive with the render-mode `mockupId` + `smartObjects` inputs).
+   */
+  imageUrl?: string
   /** Video generation options. */
   video: VideoOptions
+  /**
+   * Per-call webhook override, e.g. `{ url: 'https://example.com/hooks' }`.
+   * Delivered when the video job completes.
+   */
+  webhook?: { url: string }
   /** Optional label for the output file. */
   exportLabel?: string
 }
@@ -533,6 +649,34 @@ export interface VerifyWebhookOptions {
   toleranceSeconds?: number
 }
 
+/** Filters for {@link WebhooksResource.listDeliveries}. */
+export interface ListDeliveriesParams {
+  /** Filter by delivery status (e.g. 'pending' | 'delivered' | 'failed' | 'dead'). */
+  status?: string
+  /** Filter by event type. */
+  eventType?: WebhookEvent
+  /** Max rows (1-200, default: 50). */
+  limit?: number
+}
+
+/** Filters for {@link WebhooksResource.listEvents} (cross-endpoint feed). */
+export interface ListWebhookEventsParams {
+  /** Filter by delivery status. */
+  status?: string
+  /** Filter by event type. */
+  eventType?: WebhookEvent
+  /** Max rows (1-200, default: 100). */
+  limit?: number
+}
+
+/** Result of {@link WebhooksResource.replayFailed}. */
+export interface ReplayFailedResult {
+  /** Enqueue status (e.g. 'enqueued'). */
+  status: string
+  /** Number of failed/dead deliveries re-enqueued. */
+  count: number
+}
+
 // ---------------------------------------------------------------------------
 // Account
 // ---------------------------------------------------------------------------
@@ -545,11 +689,17 @@ export interface AccountInfo {
 }
 
 export interface SubscriptionInfo {
+  /** Plan slug. */
   plan: string
+  /** Plan tier. */
   tier: string
+  /** Subscription status. */
   status: string
-  currentPeriodEnd: string
+  /** Current billing-period end (ISO 8601); absent for free/no subscription. */
+  currentPeriodEnd?: string
   cancelAtPeriodEnd: boolean
+  /** Billing channel the subscription is managed through. */
+  billingChannel?: 'shopify' | 'stripe' | 'none' | (string & {})
 }
 
 export interface UsageInfo {
