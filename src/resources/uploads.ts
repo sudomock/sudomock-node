@@ -34,7 +34,7 @@ export class UploadsResource {
    *   psdFileUrl: 'https://example.com/mockup.psd',
    *   isAsync: true,
    * })
-   * const done = await client.jobs.waitForJob(job.renderUuid)
+   * const done = await client.jobs.waitForJob(job.jobId)
    * console.log(done.mockupUuid)
    * ```
    */

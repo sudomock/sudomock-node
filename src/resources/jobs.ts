@@ -17,14 +17,14 @@ const TERMINAL_STATUSES = new Set<Job['status']>(['succeeded', 'failed'])
 
 /**
  * Heuristic: does this parsed body look like an async {@link Job} rather than a
- * synchronous render/upload result? Async bodies carry `renderUuid`; sync
+ * synchronous render/upload result? Async bodies carry `jobId`; sync
  * render results carry `printFiles`.
  */
 export function isJobBody(body: unknown): boolean {
   return (
     typeof body === 'object' &&
     body !== null &&
-    'renderUuid' in (body as Record<string, unknown>)
+    'jobId' in (body as Record<string, unknown>)
   )
 }
 
@@ -86,14 +86,14 @@ export class JobsResource {
    *
    * @example
    * ```ts
-   * const job = await client.jobs.retrieve(renderUuid)
+   * const job = await client.jobs.retrieve(jobId)
    * if (job.status === 'succeeded') console.log(job.resultUrl)
    * ```
    */
-  async retrieve(renderUuid: string): Promise<Job> {
+  async retrieve(jobId: string): Promise<Job> {
     const data = await this.client.request<Job>({
       method: 'GET',
-      path: `/api/v1/jobs/${renderUuid}`,
+      path: `/api/v1/jobs/${jobId}`,
     })
     return toJob(data)
   }
@@ -108,13 +108,13 @@ export class JobsResource {
    *
    * @example
    * ```ts
-   * const job = await client.jobs.waitForJob(renderUuid, { intervalMs: 1000 })
+   * const job = await client.jobs.waitForJob(jobId, { intervalMs: 1000 })
    * if (job.status === 'failed') throw new Error(job.error ?? 'render failed')
    * console.log(job.resultUrl)
    * ```
    */
   async waitForJob(
-    renderUuid: string,
+    jobId: string,
     options: WaitForJobOptions = {},
   ): Promise<Job> {
     const intervalMs = options.intervalMs ?? DEFAULT_POLL_INTERVAL_MS
@@ -122,13 +122,13 @@ export class JobsResource {
     const deadline = Date.now() + timeoutMs
 
     for (;;) {
-      const job = await this.retrieve(renderUuid)
+      const job = await this.retrieve(jobId)
       if (TERMINAL_STATUSES.has(job.status)) {
         return job
       }
       if (Date.now() + intervalMs > deadline) {
         throw new TimeoutError(
-          `Job ${renderUuid} did not finish within ${timeoutMs}ms (last status: ${job.status})`,
+          `Job ${jobId} did not finish within ${timeoutMs}ms (last status: ${job.status})`,
         )
       }
       await sleep(intervalMs)

@@ -41,7 +41,7 @@ export class RendersResource {
    *   smartObjects: [{ uuid: 'so-uuid', asset: { url: '...' } }],
    *   isAsync: true,
    * })
-   * const done = await client.jobs.waitForJob(job.renderUuid)
+   * const done = await client.jobs.waitForJob(job.jobId)
    * console.log(done.resultUrl)
    * ```
    */
@@ -65,7 +65,7 @@ export class RendersResource {
       timeout: RENDER_TIMEOUT,
     })
 
-    // 202 Accepted -> async job. The body has `render_uuid`, not `print_files`,
+    // 202 Accepted -> async job. The body has `job_id`, not `print_files`,
     // so we must NOT read printFiles[0] here (that would crash on async).
     if (status === 202 || isJobBody(data)) {
       return toJob(data)
@@ -93,7 +93,7 @@ export class RendersResource {
    *   smartObjects: [{ uuid: 'so-uuid', asset: { url: '...' } }],
    *   video: { durationSeconds: 5, audio: false },
    * })
-   * const done = await client.jobs.waitForJob(job.renderUuid)
+   * const done = await client.jobs.waitForJob(job.jobId)
    * console.log(done.resultUrl) // mp4 URL
    * ```
    */

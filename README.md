@@ -122,13 +122,13 @@ const job = await client.renders.create({
   smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
   isAsync: true,
 })
-console.log(job.renderUuid, job.status) // 'queued'
+console.log(job.jobId, job.status) // 'queued'
 
 // Poll a single time:
-const status = await client.jobs.retrieve(job.renderUuid)
+const status = await client.jobs.retrieve(job.jobId)
 
 // ...or wait until it finishes (succeeded | failed):
-const done = await client.jobs.waitForJob(job.renderUuid, {
+const done = await client.jobs.waitForJob(job.jobId, {
   intervalMs: 2000,   // default
   timeoutMs: 300_000, // default; throws TimeoutError if exceeded
 })
@@ -162,7 +162,7 @@ const job = await client.renders.createVideo({
   smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
   video: { durationSeconds: 5, audio: false },
 })
-const done = await client.jobs.waitForJob(job.renderUuid)
+const done = await client.jobs.waitForJob(job.jobId)
 console.log(done.resultUrl) // mp4 URL
 ```
 
@@ -234,7 +234,7 @@ const job = await client.uploads.create({
   psdFileUrl: 'https://example.com/mockup.psd',
   isAsync: true,
 })
-const done = await client.jobs.waitForJob(job.renderUuid)
+const done = await client.jobs.waitForJob(job.jobId)
 console.log(done.mockupUuid)
 ```
 
