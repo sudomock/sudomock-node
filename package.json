@@ -43,7 +43,7 @@
     "type": "git",
     "url": "https://github.com/sudomock/sudomock-node.git"
   },
-  "homepage": "https://docs.sudomock.com",
+  "homepage": "https://sudomock.com/docs",
   "bugs": {
     "url": "https://github.com/sudomock/sudomock-node/issues"
   },

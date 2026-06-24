@@ -1,6 +1,6 @@
 # SudoMock Node.js SDK
 
-Official Node.js/TypeScript SDK for the [SudoMock API](https://docs.sudomock.com). Generate product mockups from Photoshop PSD files or use AI-powered rendering without any PSD.
+Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Generate product mockups from Photoshop PSD files or use AI-powered rendering without any PSD.
 
 ## Installation
 
@@ -418,7 +418,7 @@ SudoMock also offers an official [Model Context Protocol](https://modelcontextpr
 
 ## Links
 
-- [API Documentation](https://docs.sudomock.com)
+- [API Documentation](https://sudomock.com/docs)
 - [Dashboard](https://sudomock.com)
 - [GitHub](https://github.com/sudomock/sudomock-node)
 - [MCP Server](https://github.com/sudomock/sudomock-mcp-server)
