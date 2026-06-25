@@ -110,7 +110,7 @@ export class AIResource {
   }
 
   /**
-   * Delete a 2D mockup (and its masks, quads, and storage) permanently.
+   * Permanently delete a 2D mockup and all of its associated data.
    */
   async delete(mockupId: string): Promise<void> {
     await this.client.request<void>({
