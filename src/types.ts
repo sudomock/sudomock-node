@@ -154,10 +154,8 @@ export interface AssetSize {
 /**
  * Custom position override for a render asset.
  *
- * Maps to the backend `AssetInput.position` (`AssetPosition`), which is a
- * top-left offset in pixels on the smart-object canvas. Use `size` (width /
- * height) for dimensions -- the backend has NO width/height on the position
- * object, so any width/height here would be silently dropped.
+ * A top-left offset in pixels on the smart-object canvas. Use `size` (width /
+ * height) for dimensions -- width/height set here is ignored.
  */
 export interface AssetPosition {
   /** Top offset in pixels (Y axis). */
@@ -246,8 +244,7 @@ export interface PrintFile {
   exportPath: string
   smartObjectUuid: string
   /**
-   * Render UUID for this output. Present on the sync render response (the route
-   * is authoritative over the schema model, which omits it). Use it to
+   * Render UUID for this output. Present on the sync render response. Use it to
    * correlate a render with webhook / jobs records.
    */
   renderUuid?: string
@@ -297,10 +294,9 @@ export interface AIAdjustments {
 /**
  * Pixel offset of the artwork from its calculated position in a 2D print area.
  *
- * Maps to the backend `SudoAIPlacement.offset` (`AssetPosition`), which the
- * backend normalizes into the modern `offset_x` / `offset_y` fields
- * (`offset_x = left`, `offset_y = top`). Sending `{ x, y }` here would be
- * dropped, leaving the offset at 0.
+ * Sent as the API's `offset_x` / `offset_y` fields (`offset_x = left`,
+ * `offset_y = top`). Sending `{ x, y }` here would be dropped, leaving the
+ * offset at 0.
  */
 export interface AIPlacementOffset {
   /** Vertical offset in pixels (Y axis) -> backend `offset_y`. */
@@ -315,14 +311,13 @@ export interface AIPlacement {
   coverage?: number
   fit?: string
   /**
-   * Scale multiplier applied to the artwork (0.01-10). Maps to the backend
-   * `SudoAIPlacement.scale` and OVERRIDES `coverage` + `fit` sizing. Prefer this
-   * over the deprecated `size` field.
+   * Scale multiplier applied to the artwork (0.01-10). OVERRIDES `coverage` +
+   * `fit` sizing. Prefer this over the deprecated `size` field.
    */
   scale?: number
   /**
-   * Rotation in degrees, clockwise positive (-360 to 360). Maps to the backend
-   * `SudoAIPlacement.rotation`. Prefer this over the deprecated `rotate` field.
+   * Rotation in degrees, clockwise positive (-360 to 360). Prefer this over the
+   * deprecated `rotate` field.
    */
   rotation?: number
   /** @deprecated Use {@link AIPlacement.rotation}. Legacy rotation in degrees. */
@@ -511,7 +506,7 @@ export interface Job {
   error?: string | null
   /**
    * Real charge for the job. For credit/subscription jobs this is the deducted
-   * credit count; for PAYG it is the billable credit count (NOT the stored 0).
+   * credit count; for PAYG it is the billable credit count.
    * The dollar amount lives in {@link payg}.
    */
   creditsCharged?: number | null
@@ -550,7 +545,7 @@ export interface Job {
    */
   mockupName?: string | null
   /**
-   * URL of the i2v seed-frame still (video poster). List-only display field on
+   * URL of the video poster image. List-only display field on
    * `jobs.list()` items; `null` until produced / for non-video kinds.
    */
   posterUrl?: string | null
@@ -616,8 +611,8 @@ export interface CreateVideoParams {
   /**
    * Mockup UUID to animate.
    *
-   * - **Render mode:** required -- the worker renders the i2v input still from
-   *   this mockup + `smartObjects`.
+   * - **Render mode:** required -- the video is generated from this mockup +
+   *   `smartObjects`.
    * - **Raw-image mode:** optional -- pure association when animating an
    *   `imageUrl` directly.
    */
@@ -645,8 +640,8 @@ export interface CreateVideoParams {
 /**
  * Per-call completion webhook override for {@link CreateVideoParams.webhook}.
  *
- * The backend accepts an arbitrary webhook object (`Optional[Dict[str, Any]]`);
- * `url` is the meaningful field, but additional keys are forwarded as-is.
+ * The webhook is an arbitrary object; `url` is the meaningful field, but
+ * additional keys are forwarded as-is.
  */
 export interface VideoWebhookOverride {
   /** Destination URL the completion delivery is POSTed to. */
