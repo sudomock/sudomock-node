@@ -365,11 +365,60 @@ export interface AIRenderResult {
   url: string
 }
 
+/** Parameters for creating a reusable 2D mockup from exactly one image source. */
+export type Create2DMockupParams = {
+  /** Optional display name. */
+  name?: string
+  /** Optional key for safely retrying the same create request. */
+  idempotencyKey?: string
+} & (
+  | { sourceUrl: string; sourceBase64?: never }
+  | { sourceUrl?: never; sourceBase64: string }
+)
+
+/** Accepted 2D-mockup creation job. */
+export interface Create2DMockupResult {
+  jobId: string
+  kind: '2d_create'
+  status: 'queued'
+  statusUrl: string
+}
+
+/** Options for `client.ai.waitForReady()`. */
+export interface WaitFor2DMockupOptions {
+  /** Milliseconds between polls (default: 2000). */
+  intervalMs?: number
+  /** Maximum wait before a {@link TimeoutError} is thrown (default: 180000). */
+  timeoutMs?: number
+}
+
+/** One 2D image coordinate. */
+export type TwoDPoint = readonly [number, number]
+
+/** Four corners ordered top-left, top-right, bottom-right, bottom-left. */
+export type TwoDQuadPoints = readonly [
+  TwoDPoint,
+  TwoDPoint,
+  TwoDPoint,
+  TwoDPoint,
+]
+
 /** A single distorted-quad print area on a 2D mockup. */
 export interface TwoDMockupQuad {
   printAreaId: string
   points: number[][]
   sortOrder: number
+}
+
+/** Replacement geometry for one 2D print area. */
+export interface TwoDPrintAreaInput {
+  points: TwoDQuadPoints
+}
+
+/** Updated geometry returned by `client.ai.updatePrintAreas()`. */
+export interface Update2DPrintAreasResult {
+  mockupId: string
+  printAreas: TwoDMockupQuad[]
 }
 
 /** A 2D mockup as returned by `client.ai.get()` / `client.ai.list()`. */
@@ -384,10 +433,15 @@ export interface TwoDMockup {
   /** Quads (present on the single-get response). */
   quads?: TwoDMockupQuad[]
   /** Print areas (present on the list response). */
-  printAreas?: unknown[]
+  printAreas?: TwoDMockupQuad[]
   version: number
   createdAt: string
   updatedAt: string
+}
+
+/** Full 2D mockup returned by `client.ai.get()` and `waitForReady()`. */
+export interface TwoDMockupDetails extends TwoDMockup {
+  quads: TwoDMockupQuad[]
 }
 
 /** Pagination params for `client.ai.list()`. */
@@ -450,11 +504,11 @@ export interface UploadResult {
 }
 
 // ---------------------------------------------------------------------------
-// Jobs (async renders / videos)
+// Jobs (async renders / videos / uploads / 2D creation)
 // ---------------------------------------------------------------------------
 
 /** The kind of work a job performs. */
-export type JobKind = 'render' | 'video' | 'upload'
+export type JobKind = 'render' | 'video' | 'upload' | '2d_create'
 
 /**
  * Terminal and in-flight statuses for an async job (the API field is `status`).
@@ -462,7 +516,7 @@ export type JobKind = 'render' | 'video' | 'upload'
  * - `queued`    -- accepted, waiting for a worker
  * - `running`   -- a worker is processing the job
  * - `succeeded` -- finished; `resultUrl` is populated (terminal)
- * - `failed`    -- finished with an error; `error` is populated (terminal)
+ * - `failed`: finished with failure details (terminal)
  */
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
@@ -481,8 +535,7 @@ export interface JobPayg {
 }
 
 /**
- * An async job, returned by `POST /renders` (`isAsync`), `POST /renders/video`,
- * `POST /psd/upload` (`isAsync`), and `GET /jobs/{jobId}`.
+ * An async job returned by render, upload, 2D creation, and job endpoints.
  */
 export interface Job {
   /** Stable identifier for the job; also the poll key. */
@@ -500,10 +553,12 @@ export interface Job {
   model?: string | null
   /** Output URL once `status === 'succeeded'`. */
   resultUrl?: string | null
-  /** UUID of the mockup produced/affected (set for `kind === 'upload'`). */
+  /** UUID produced by an upload or 2D-creation job. */
   mockupUuid?: string | null
-  /** Error message when `status === 'failed'`. */
+  /** Failure message when `status === 'failed'`. */
   error?: string | null
+  /** Stable failure code when `status === 'failed'`. */
+  errorCode?: string | null
   /**
    * Real charge for the job. For credit/subscription jobs this is the deducted
    * credit count; for PAYG it is the billable credit count.

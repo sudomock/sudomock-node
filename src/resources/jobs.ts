@@ -37,10 +37,25 @@ export function isJobBody(body: unknown): boolean {
 export function toJob(body: unknown): Job {
   const raw = (body ?? {}) as Record<string, unknown>
   const status = (raw['status'] ?? raw['state']) as Job['status'] | undefined
+  const failure =
+    typeof raw['error'] === 'object' && raw['error'] !== null
+      ? (raw['error'] as Record<string, unknown>)
+      : null
   return {
     ...(raw as unknown as Job),
     kind: (raw['kind'] as Job['kind']) ?? 'render',
     status: status ?? 'queued',
+    error:
+      status === 'failed'
+        ? failure
+          ? typeof failure['message'] === 'string'
+            ? failure['message']
+            : null
+          : ((raw['error'] ?? raw['message']) as Job['error'])
+        : undefined,
+    errorCode:
+      (failure?.['errorCode'] as string | undefined) ??
+      (raw['errorCode'] as string | null | undefined),
   }
 }
 

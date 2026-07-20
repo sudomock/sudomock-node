@@ -80,6 +80,18 @@ export class TimeoutError extends SudoMockError {
   }
 }
 
+/** An async job reached a failed terminal state. */
+export class JobFailedError extends SudoMockError {
+  /** Stable identifier of the failed job. */
+  readonly jobId: string
+
+  constructor(jobId: string, message = 'Job failed', code = 'job_failed') {
+    super(message, 0, code)
+    this.name = 'JobFailedError'
+    this.jobId = jobId
+  }
+}
+
 /** Network / connection error */
 export class ConnectionError extends SudoMockError {
   constructor(message = 'Connection failed') {

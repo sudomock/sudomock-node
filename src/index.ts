@@ -42,7 +42,7 @@ class SudoMock {
   readonly mockups: MockupsResource
   /** Render mockups with artwork */
   readonly renders: RendersResource
-  /** AI-powered rendering (no PSD required) */
+  /** Create and render reusable 2D mockups */
   readonly ai: AIResource
   /** Upload PSD files */
   readonly uploads: UploadsResource
@@ -50,7 +50,7 @@ class SudoMock {
   readonly account: AccountResource
   /** Studio session management */
   readonly studio: StudioResource
-  /** Poll async jobs (async renders, video renders, async uploads) */
+  /** Poll async render, video, upload, and 2D-creation jobs */
   readonly jobs: JobsResource
   /** Manage webhook endpoints and their deliveries */
   readonly webhooks: WebhooksResource
@@ -98,6 +98,7 @@ export {
   RateLimitError,
   InternalError,
   TimeoutError,
+  JobFailedError,
   ConnectionError,
 } from './errors'
 
@@ -129,7 +130,15 @@ export type {
   AIPlacementOffset,
   AIPrintFile,
   AIRenderResult,
+  Create2DMockupParams,
+  Create2DMockupResult,
+  WaitFor2DMockupOptions,
+  TwoDPoint,
+  TwoDQuadPoints,
+  TwoDPrintAreaInput,
+  Update2DPrintAreasResult,
   TwoDMockup,
+  TwoDMockupDetails,
   TwoDMockupQuad,
   TwoDMockupListResult,
   List2dMockupsParams,

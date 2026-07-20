@@ -60,6 +60,8 @@ export interface RequestOptions {
   path: string
   body?: unknown
   query?: Record<string, string | number | undefined>
+  /** Additional request headers. */
+  headers?: Record<string, string>
   /** Override default timeout for this request (ms) */
   timeout?: number
   /**
@@ -79,7 +81,7 @@ export interface ClientConfig {
 }
 
 /** SDK version, surfaced in the User-Agent header. Keep in sync with package.json. */
-const SDK_VERSION = '1.2.0'
+const SDK_VERSION = '1.3.0'
 
 /** Initial backoff in ms for exponential retry */
 const INITIAL_BACKOFF_MS = 500
@@ -222,6 +224,7 @@ export class HttpClient {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'User-Agent': `sudomock-node/${SDK_VERSION}`,
+      ...options.headers,
     }
 
     const init: RequestInit = {

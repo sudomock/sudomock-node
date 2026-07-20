@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import SudoMock from '../src/index'
+import SudoMock, {
+  JobFailedError,
+  TimeoutError,
+  ValidationError,
+  type TwoDPrintAreaInput,
+} from '../src/index'
 import { CreditError } from '../src/errors'
 import {
   TEST_API_KEY,
@@ -15,6 +20,8 @@ import {
 function createClient() {
   return new SudoMock(TEST_API_KEY, { baseUrl: TEST_BASE_URL })
 }
+
+const TWO_D_CREATE_JOB_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 describe('renders.create()', () => {
   it('renders a mockup and returns URL', async () => {
@@ -166,6 +173,257 @@ describe('ai.render() — 2D mockup', () => {
     expect(exportOpts['image_format']).toBe('webp')
     expect(exportOpts['image_size']).toBe(2048)
     expect(exportOpts['quality']).toBe(90)
+  })
+})
+
+describe('ai.create() and waitForReady()', () => {
+  it('sends only source_url and passes through the idempotency header', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        idempotencyKey = request.headers.get('Idempotency-Key')
+        return HttpResponse.json(
+          {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'queued',
+            status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+          },
+          { status: 202 },
+        )
+      }),
+    )
+
+    const job = await createClient().ai.create({
+      sourceUrl: 'https://example.com/product.jpg',
+      name: 'Front view',
+      idempotencyKey: 'front-view-v1',
+    })
+
+    expect(capturedBody).toEqual({
+      source_url: 'https://example.com/product.jpg',
+      name: 'Front view',
+    })
+    expect(idempotencyKey).toBe('front-view-v1')
+    expect(job).toEqual({
+      jobId: TWO_D_CREATE_JOB_ID,
+      kind: '2d_create',
+      status: 'queued',
+      statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+    })
+  })
+
+  it('sends only source_base64 with a generated idempotency key', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        idempotencyKey = request.headers.get('Idempotency-Key')
+        return HttpResponse.json(
+          {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'queued',
+            status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+          },
+          { status: 202 },
+        )
+      }),
+    )
+
+    await createClient().ai.create({ sourceBase64: 'aW1hZ2U=' })
+
+    expect(capturedBody).toEqual({ source_base64: 'aW1hZ2U=' })
+    expect(idempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+  })
+
+  it('rejects both or neither source before making a request', async () => {
+    const client = createClient()
+    await expect(client.ai.create({} as never)).rejects.toThrow(ValidationError)
+    await expect(
+      client.ai.create({ sourceUrl: 'https://example.com/x.jpg', sourceBase64: 'eA==' } as never),
+    ).rejects.toThrow(ValidationError)
+  })
+
+  it('returns the full mockup after a successful job', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:id`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'succeeded',
+            mockup_uuid: MOCK_2D_MOCKUP.mockup_id,
+            result_url: `/api/v1/sudoai/2d-mockup/${MOCK_2D_MOCKUP.mockup_id}`,
+          },
+        }),
+      ),
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, () =>
+        HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
+      ),
+    )
+
+    const mockup = await createClient().ai.waitForReady({
+      jobId: TWO_D_CREATE_JOB_ID,
+      kind: '2d_create',
+      status: 'queued',
+      statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+    })
+
+    expect(mockup.mockupId).toBe(MOCK_2D_MOCKUP.mockup_id)
+    expect(mockup.quads[0]?.printAreaId).toBe(
+      MOCK_2D_MOCKUP.quads[0]!.print_area_id,
+    )
+  })
+
+  it('rejects a successful job without mockup_uuid', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:id`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'succeeded',
+          },
+        }),
+      ),
+    )
+
+    await expect(
+      createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID),
+    ).rejects.toMatchObject({ code: 'invalid_job_response' })
+  })
+
+  it('throws JobFailedError with the NOT_MOCKUPABLE reason', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:id`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'failed',
+            error: {
+              error_code: 'NOT_MOCKUPABLE',
+              message: 'The source image is not suitable for a 2D mockup.',
+            },
+          },
+        }),
+      ),
+    )
+
+    const error = await createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID, {
+      intervalMs: 5,
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(JobFailedError)
+    expect(error).toMatchObject({
+      jobId: TWO_D_CREATE_JOB_ID,
+      code: 'NOT_MOCKUPABLE',
+      message: 'The source image is not suitable for a 2D mockup.',
+    })
+  })
+
+  it('throws TimeoutError containing the job id', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:id`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_create',
+            status: 'running',
+          },
+        }),
+      ),
+    )
+
+    const error = await createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID, {
+      intervalMs: 5,
+      timeoutMs: 20,
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(TimeoutError)
+    expect(error).toHaveProperty(
+      'message',
+      expect.stringContaining(TWO_D_CREATE_JOB_ID),
+    )
+  })
+
+  it('throws CreditError on 402', async () => {
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, () =>
+        HttpResponse.json(
+          { detail: 'Insufficient credits' },
+          { status: 402 },
+        ),
+      ),
+    )
+
+    await expect(
+      createClient().ai.create({ sourceUrl: 'https://example.com/product.jpg' }),
+    ).rejects.toThrow(CreditError)
+  })
+})
+
+describe('ai.updatePrintAreas()', () => {
+  it('puts the replacement geometry in the expected payload', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    const printAreas: TwoDPrintAreaInput[] = [{
+      points: [[10, 20], [110, 20], [110, 120], [10, 120]],
+    }]
+    server.use(
+      http.put(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id/print-areas`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            success: true,
+            data: {
+              mockup_id: MOCK_2D_MOCKUP.mockup_id,
+              print_areas: [{
+                print_area_id: MOCK_2D_MOCKUP.quads[0]!.print_area_id,
+                points: printAreas[0]!.points,
+                sort_order: 0,
+              }],
+            },
+          })
+        },
+      ),
+    )
+
+    const result = await createClient().ai.updatePrintAreas(
+      MOCK_2D_MOCKUP.mockup_id,
+      printAreas,
+    )
+
+    expect(capturedBody).toEqual({ print_areas: printAreas })
+    expect(result.mockupId).toBe(MOCK_2D_MOCKUP.mockup_id)
+    expect(result.printAreas[0]?.sortOrder).toBe(0)
+  })
+
+  it('rejects fewer than 1 or more than 8 print areas', async () => {
+    const client = createClient()
+    const printArea: TwoDPrintAreaInput = {
+      points: [[10, 20], [110, 20], [110, 120], [10, 120]],
+    }
+
+    await expect(
+      client.ai.updatePrintAreas(MOCK_2D_MOCKUP.mockup_id, []),
+    ).rejects.toThrow(ValidationError)
+    await expect(
+      client.ai.updatePrintAreas(
+        MOCK_2D_MOCKUP.mockup_id,
+        Array(9).fill(printArea),
+      ),
+    ).rejects.toThrow(ValidationError)
   })
 })
 
