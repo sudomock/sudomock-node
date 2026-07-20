@@ -22,7 +22,10 @@ describe('renders.create({ isAsync: true })', () => {
   it('returns a Job on 202 without crashing on missing printFiles', async () => {
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders`, () => {
-        return HttpResponse.json(MOCK_JOB_ACCEPTED_RESPONSE, { status: 202 })
+        return HttpResponse.json(
+          { ...MOCK_JOB_ACCEPTED_RESPONSE, message: 'Render queued' },
+          { status: 202 },
+        )
       }),
     )
 
@@ -38,6 +41,7 @@ describe('renders.create({ isAsync: true })', () => {
     expect(job.kind).toBe('render')
     expect(job.status).toBe('queued')
     expect(job.statusUrl).toBe(`/api/v1/jobs/${ASYNC_UUID}`)
+    expect(job.error).toBeUndefined()
   })
 
   it('sends is_async in snake_case', async () => {
@@ -164,6 +168,26 @@ describe('jobs.retrieve()', () => {
     expect(job.payg?.credits).toBe(2)
     expect(job.payg?.unitPrice).toBe(0.0035)
     expect(job.payg?.cost).toBe(0.007)
+  })
+
+  it('surfaces a flat error_code on failed jobs', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: ASYNC_UUID,
+            kind: '2d_create',
+            status: 'failed',
+            error: 'The source image is not suitable for a 2D mockup.',
+            error_code: 'NOT_MOCKUPABLE',
+          },
+        }),
+      ),
+    )
+
+    const job = await createClient().jobs.retrieve(ASYNC_UUID)
+    expect(job.errorCode).toBe('NOT_MOCKUPABLE')
   })
 })
 
