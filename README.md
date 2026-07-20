@@ -140,7 +140,7 @@ console.log(done.resultUrl)
 It throws `TimeoutError` only when the job is still running past `timeoutMs`.
 
 List and page your jobs (keyset pagination, newest first). Filter by `kind`
-(`render` | `video` | `upload`) and/or `mockupUuid`:
+(`render` | `video` | `upload` | `2d_create`) and/or `mockupUuid`:
 
 ```typescript
 const { jobs, nextCursor } = await client.jobs.list({ kind: 'video', limit: 50 })
@@ -185,6 +185,8 @@ mockup catalog. `client.ai.render` posts to `/api/v1/sudoai/2d-mockup/render`
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
 `color`.
 
+#### Render an existing 2D mockup
+
 ```typescript
 const result = await client.ai.render({
   mockupId: 'mockup-uuid',
@@ -199,6 +201,43 @@ const result = await client.ai.render({
 console.log(result.url)                       // first rendered file
 console.log(result.printFiles[0].durationMs)  // 2340
 console.log(result.printFiles[0].exportFormat) // 'webp'
+```
+
+#### 2D mockups: create via API
+
+Create a reusable 2D mockup, wait until it is ready, then render artwork. Creation
+costs **25 credits**. If the source image is unsuitable, the **25 credits** are
+refunded automatically.
+
+```typescript
+const pending = await client.ai.create({
+  sourceUrl: 'https://example.com/product.jpg',
+  name: 'Front view',
+  idempotencyKey: 'front-view-v1',
+})
+const mockup = await client.ai.waitForReady(pending, { intervalMs: 2_000 })
+
+const printArea = mockup.quads[0]
+if (!printArea) throw new Error('No print area available')
+
+const result = await client.ai.render({
+  mockupId: mockup.mockupId,
+  printAreas: [{
+    uuid: printArea.printAreaId,
+    artworkUrl: 'https://example.com/design.png',
+  }],
+})
+console.log(result.url)
+```
+
+Update all print areas on a ready mockup with 1 to 8 four-point quads (**0
+credits**):
+
+```typescript
+const updated = await client.ai.updatePrintAreas('mockup-uuid', [{
+  points: [[100, 100], [900, 100], [900, 900], [100, 900]],
+}])
+console.log(updated.printAreas)
 ```
 
 Manage the 2D-mockup catalog:
@@ -338,6 +377,7 @@ import SudoMock, {
   NotFoundError,
   ValidationError,
   TimeoutError,
+  JobFailedError,
   ConnectionError,
 } from 'sudomock'
 
@@ -371,6 +411,7 @@ try {
 | `RateLimitError` | 429 | Too many requests (check `.retryAfter`) |
 | `InternalError` | 500+ | Server error (auto-retried) |
 | `TimeoutError` | -- | Request timed out |
+| `JobFailedError` | N/A | Async job failed: `.jobId` identifies the job |
 | `ConnectionError` | -- | Network/DNS failure |
 
 ## Retry Behavior
