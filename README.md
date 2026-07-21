@@ -205,6 +205,26 @@ console.log(result.printFiles[0].durationMs)   // 2340
 console.log(result.printFiles[0].exportFormat) // 'webp'
 ```
 
+Prefer to render in the background? Pass `isAsync: true` and `render()` resolves
+with a `Job` of kind `'2d_render'` (`202 Accepted`) you await with
+`jobs.waitForJob`. A `2d_render.succeeded` / `2d_render.failed` webhook also
+fires.
+
+```typescript
+const job = await client.ai.render({
+  mockupId: 'mockup-uuid',
+  printAreas: [{
+    uuid: 'print-area-uuid',
+    artworkUrl: 'https://example.com/design.png',
+  }],
+  isAsync: true,
+})
+
+const done = await client.jobs.waitForJob(job.jobId)
+if (done.status === 'failed') throw new Error(done.error ?? 'render failed')
+console.log(done.resultUrl) // rendered file URL
+```
+
 #### 2D mockups: create via API
 
 Create a reusable 2D mockup, then render artwork. By default creation is

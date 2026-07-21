@@ -348,6 +348,18 @@ export interface AIRenderParams {
   printAreas: AIPrintArea[]
   /** Export options. */
   exportOptions?: ExportOptions
+  /**
+   * Submit the 2D render asynchronously.
+   *
+   * When `true`, the API enqueues the render and immediately returns a
+   * {@link Job} of kind `'2d_render'` (HTTP 202) instead of blocking until the
+   * render completes. Poll the job with `client.jobs.retrieve(job.jobId)` or
+   * `client.jobs.waitForJob(job.jobId)`; a `2d_render.succeeded` /
+   * `2d_render.failed` webhook also fires.
+   *
+   * Default: `false` (synchronous, returns an {@link AIRenderResult}).
+   */
+  isAsync?: boolean
 }
 
 export interface AIPrintFile {
@@ -532,7 +544,7 @@ export interface UploadResult {
 // ---------------------------------------------------------------------------
 
 /** The kind of work a job performs. */
-export type JobKind = 'render' | 'video' | 'upload' | '2d_create'
+export type JobKind = 'render' | 'video' | 'upload' | '2d_create' | '2d_render'
 
 /**
  * Terminal and in-flight statuses for an async job (the API field is `status`).
