@@ -4,7 +4,7 @@ import type {
   AIRenderParams,
   AIRenderResult,
   Create2DMockupParams,
-  Create2DMockupResult,
+  Job,
   TwoDMockup,
   TwoDMockupDetails,
   TwoDMockupListResult,
@@ -14,7 +14,7 @@ import type {
   WaitFor2DMockupOptions,
 } from '../types'
 import { JobFailedError, SudoMockError, ValidationError } from '../errors'
-import { JobsResource } from './jobs'
+import { JobsResource, isJobBody, toJob } from './jobs'
 
 /** Default 2D-mockup render timeout: 120s */
 const AI_RENDER_TIMEOUT = 120_000
@@ -31,21 +31,40 @@ export class AIResource {
   /**
    * Create a reusable 2D mockup from a public URL or base64 image.
    *
-   * Supply exactly one of `sourceUrl` or `sourceBase64`. The accepted job can
-   * be passed directly to {@link waitForReady}. Costs 25 credits. If the image
-   * is not suitable, the job fails and the credits are refunded automatically.
+   * Supply exactly one of `sourceUrl` or `sourceBase64`. By default the mockup
+   * is created synchronously: the API responds with HTTP 201 and this method
+   * resolves with the ready {@link TwoDMockupDetails} (including its `quads`).
+   * Pass `isAsync: true` to enqueue creation instead: the API responds with
+   * HTTP 202 and this method resolves with a {@link Job} you can pass to
+   * {@link waitForReady} (or poll via `client.jobs`).
    *
-   * @example
+   * Costs 25 credits. If the source image is not suitable the request fails
+   * (sync) or the job fails (async) and the credits are refunded automatically.
+   *
+   * @example Synchronous (default)
    * ```ts
-   * const job = await client.ai.create({
+   * const mockup = await client.ai.create({
    *   sourceUrl: 'https://example.com/product.jpg',
    *   name: 'Front view',
    *   idempotencyKey: 'front-view-v1',
    * })
+   * console.log(mockup.mockupId, mockup.quads)
+   * ```
+   *
+   * @example Asynchronous
+   * ```ts
+   * const job = await client.ai.create({
+   *   sourceUrl: 'https://example.com/product.jpg',
+   *   isAsync: true,
+   * })
    * const mockup = await client.ai.waitForReady(job)
    * ```
    */
-  async create(params: Create2DMockupParams): Promise<Create2DMockupResult> {
+  create(params: Create2DMockupParams & { isAsync: true }): Promise<Job>
+  create(params: Create2DMockupParams): Promise<TwoDMockupDetails>
+  async create(
+    params: Create2DMockupParams,
+  ): Promise<TwoDMockupDetails | Job> {
     if (
       (params.sourceUrl === undefined) ===
       (params.sourceBase64 === undefined)
@@ -56,27 +75,46 @@ export class AIResource {
     }
 
     const idempotencyKey = params.idempotencyKey ?? randomUUID()
-    return this.client.request<Create2DMockupResult>({
+    const body: Record<string, unknown> = {
+      sourceUrl: params.sourceUrl,
+      sourceBase64: params.sourceBase64,
+      name: params.name,
+      printAreas: params.printAreas,
+    }
+    // Only send is_async when explicitly opting into the async job flow; the
+    // default (sync) create must not carry the flag.
+    if (params.isAsync) {
+      body['isAsync'] = true
+    }
+
+    const { status, data } = await this.client.requestWithStatus<
+      TwoDMockupDetails | Job
+    >({
       method: 'POST',
       path: '/api/v1/sudoai/2d-mockups',
-      body: {
-        sourceUrl: params.sourceUrl,
-        sourceBase64: params.sourceBase64,
-        name: params.name,
-      },
+      body,
       headers: { 'Idempotency-Key': idempotencyKey },
     })
+
+    // 202 Accepted -> async job (has `job_id`, not the mockup body). Sync 201
+    // returns the ready mockup directly.
+    if (status === 202 || isJobBody(data)) {
+      return toJob(data)
+    }
+
+    return data as TwoDMockupDetails
   }
 
   /**
    * Wait for a 2D-mockup creation job and return the completed mockup.
    *
-   * Throws {@link JobFailedError} with the API failure code and message when
-   * creation fails. Throws {@link TimeoutError} when the wait exceeds
-   * `timeoutMs`.
+   * Only needed for the async create flow (`create({ isAsync: true })`); the
+   * default sync create already returns the ready mockup. Throws
+   * {@link JobFailedError} with the API failure code and message when creation
+   * fails. Throws {@link TimeoutError} when the wait exceeds `timeoutMs`.
    */
   async waitForReady(
-    jobIdOrCreateResult: string | Create2DMockupResult,
+    jobIdOrCreateResult: string | Job,
     {
       intervalMs = 2_000,
       timeoutMs = 180_000,
@@ -111,9 +149,10 @@ export class AIResource {
   /**
    * Render artwork (or a color) onto an existing 2D mockup.
    *
-   * Targets `POST /api/v1/sudoai/2d-mockup/render` (the canonical endpoint; the
-   * legacy `/sudoai/render` alias is deprecated and sunsets 2026-09-30). Each
-   * print area must supply `artworkUrl` OR `color`. Costs 5 credits.
+   * Targets `POST /api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id
+   * lives in the path). Each print area must supply `artworkUrl` OR `color`.
+   * Costs 5 credits. Returns the rendered `printFiles` plus a `renderUuid` you
+   * can use to correlate the render with webhook / transaction records.
    *
    * @example
    * ```ts
@@ -124,19 +163,18 @@ export class AIResource {
    *     artworkUrl: 'https://example.com/design.png',
    *   }],
    * })
-   * console.log(result.url)
+   * console.log(result.url, result.renderUuid)
    * ```
    */
   async render(params: AIRenderParams): Promise<AIRenderResult> {
     const body = {
-      mockupUuid: params.mockupId,
       printAreas: params.printAreas,
       exportOptions: params.exportOptions,
     }
 
     const result = await this.client.request<AIRenderResult>({
       method: 'POST',
-      path: '/api/v1/sudoai/2d-mockup/render',
+      path: `/api/v1/sudoai/2d-mockups/${params.mockupId}/render`,
       body,
       timeout: AI_RENDER_TIMEOUT,
     })
@@ -194,12 +232,13 @@ export class AIResource {
   async get(mockupId: string): Promise<TwoDMockupDetails> {
     return this.client.request<TwoDMockupDetails>({
       method: 'GET',
-      path: `/api/v1/sudoai/2d-mockup/${mockupId}`,
+      path: `/api/v1/sudoai/2d-mockups/${mockupId}`,
     })
   }
 
   /**
-   * Replace all print areas on a 2D mockup with 1 to 8 four-point quads.
+   * Replace all print areas on a 2D mockup with 1 to 8 four-point quads. Each
+   * quad may carry an optional `name`.
    */
   async updatePrintAreas(
     mockupId: string,
@@ -211,7 +250,7 @@ export class AIResource {
 
     return this.client.request<Update2DPrintAreasResult>({
       method: 'PUT',
-      path: `/api/v1/sudoai/2d-mockup/${mockupId}/print-areas`,
+      path: `/api/v1/sudoai/2d-mockups/${mockupId}/print-areas`,
       body: { printAreas },
     })
   }
@@ -222,7 +261,7 @@ export class AIResource {
   async delete(mockupId: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/sudoai/2d-mockup/${mockupId}`,
+      path: `/api/v1/sudoai/2d-mockups/${mockupId}`,
     })
   }
 }
