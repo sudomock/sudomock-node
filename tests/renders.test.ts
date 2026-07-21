@@ -175,6 +175,97 @@ describe('ai.render() — 2D mockup', () => {
     expect(exportOpts['image_format']).toBe('webp')
     expect(exportOpts['image_size']).toBe(2048)
     expect(exportOpts['quality']).toBe(90)
+    // Default (sync) render must NOT send is_async.
+    expect(capturedBody['is_async']).toBeUndefined()
+  })
+
+  it('returns a Job (202) and sends is_async when isAsync: true', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    let capturedPath = ''
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        async ({ request }) => {
+          capturedPath = new URL(request.url).pathname
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(
+            {
+              job_id: TWO_D_CREATE_JOB_ID,
+              kind: '2d_render',
+              status: 'queued',
+              status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+            },
+            { status: 202 },
+          )
+        },
+      ),
+    )
+
+    const job = await createClient().ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        { uuid: 'pa-uuid', artworkUrl: 'https://example.com/design.png' },
+      ],
+      isAsync: true,
+    })
+
+    // Still the plural path-param URL; id stays in the path, not the body.
+    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockups/mockup-uuid/render')
+    expect(capturedBody['is_async']).toBe(true)
+    expect(capturedBody['mockup_uuid']).toBeUndefined()
+    // 202 resolves with the job envelope (no printFiles read -> no crash).
+    expect(job).toEqual({
+      jobId: TWO_D_CREATE_JOB_ID,
+      kind: '2d_render',
+      status: 'queued',
+      statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+    })
+    expect('printFiles' in job).toBe(false)
+  })
+
+  it('awaits an async 2D render via jobs.waitForJob to a result_url', async () => {
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        () =>
+          HttpResponse.json(
+            {
+              job_id: TWO_D_CREATE_JOB_ID,
+              kind: '2d_render',
+              status: 'queued',
+              status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
+            },
+            { status: 202 },
+          ),
+      ),
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            job_id: TWO_D_CREATE_JOB_ID,
+            kind: '2d_render',
+            status: 'succeeded',
+            result_url: 'https://cdn.sudomock.com/renders/sudoai/async-done.png',
+            error: null,
+          },
+        }),
+      ),
+    )
+
+    const client = createClient()
+    const job = await client.ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        { uuid: 'pa-uuid', artworkUrl: 'https://example.com/design.png' },
+      ],
+      isAsync: true,
+    })
+    const done = await client.jobs.waitForJob(job.jobId, { intervalMs: 5 })
+
+    expect(done.status).toBe('succeeded')
+    expect(done.resultUrl).toBe(
+      'https://cdn.sudomock.com/renders/sudoai/async-done.png',
+    )
   })
 })
 
