@@ -113,7 +113,7 @@ describe('renders.create()', () => {
 })
 
 describe('ai.render() — 2D mockup', () => {
-  it('renders artwork onto a 2D mockup and returns URL', async () => {
+  it('renders artwork onto a 2D mockup and returns URL + renderUuid', async () => {
     const client = createClient()
     const result = await client.ai.render({
       mockupId: '11111111-1111-1111-1111-111111111111',
@@ -129,16 +129,17 @@ describe('ai.render() — 2D mockup', () => {
     expect(result.url).toBe(
       'https://cdn.sudomock.com/renders/sudoai/abc123.png',
     )
+    expect(result.renderUuid).toBe('dddddddd-dddd-dddd-dddd-dddddddddddd')
     expect(result.printFiles[0]!.durationMs).toBe(2340)
     expect(result.printFiles[0]!.exportFormat).toBe('png')
   })
 
-  it('posts the 2D render body in snake_case to /sudoai/2d-mockup/render', async () => {
+  it('posts the 2D render body in snake_case to /sudoai/2d-mockups/{id}/render (id in path, not body)', async () => {
     let capturedBody: Record<string, unknown> = {}
     let capturedPath = ''
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/render`,
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
         async ({ request }) => {
           capturedPath = new URL(request.url).pathname
           capturedBody = (await request.json()) as Record<string, unknown>
@@ -160,8 +161,9 @@ describe('ai.render() — 2D mockup', () => {
       exportOptions: { imageFormat: 'webp', imageSize: 2048, quality: 90 },
     })
 
-    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockup/render')
-    expect(capturedBody['mockup_uuid']).toBe('mockup-uuid')
+    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockups/mockup-uuid/render')
+    // Mockup id moved into the path -- it must NOT be in the body anymore.
+    expect(capturedBody['mockup_uuid']).toBeUndefined()
     const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
     expect(printAreas).toHaveLength(1)
     expect(printAreas[0]!['uuid']).toBe('pa-uuid')
@@ -177,13 +179,69 @@ describe('ai.render() — 2D mockup', () => {
 })
 
 describe('ai.create() and waitForReady()', () => {
-  it('sends only source_url and passes through the idempotency header', async () => {
+  it('creates synchronously (201) and returns the ready mockup, not a job', async () => {
     let capturedBody: Record<string, unknown> = {}
     let idempotencyKey: string | null = null
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
         idempotencyKey = request.headers.get('Idempotency-Key')
+        return HttpResponse.json(
+          { success: true, data: MOCK_2D_MOCKUP },
+          { status: 201 },
+        )
+      }),
+    )
+
+    const mockup = await createClient().ai.create({
+      sourceUrl: 'https://example.com/product.jpg',
+      name: 'Front view',
+      idempotencyKey: 'front-view-v1',
+    })
+
+    // Default (sync) create must NOT send is_async, and only the provided source.
+    expect(capturedBody).toEqual({
+      source_url: 'https://example.com/product.jpg',
+      name: 'Front view',
+    })
+    expect(idempotencyKey).toBe('front-view-v1')
+    // Resolves with the ready mockup body (with quads), not a job envelope.
+    expect(mockup.mockupId).toBe(MOCK_2D_MOCKUP.mockup_id)
+    expect(mockup.status).toBe('ready')
+    expect(mockup.quads[0]?.printAreaId).toBe(
+      MOCK_2D_MOCKUP.quads[0]!.print_area_id,
+    )
+    expect(mockup.quads[0]?.name).toBe('Front')
+    expect('jobId' in mockup).toBe(false)
+  })
+
+  it('sends only source_base64 with a generated idempotency key', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    let idempotencyKey: string | null = null
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        idempotencyKey = request.headers.get('Idempotency-Key')
+        return HttpResponse.json(
+          { success: true, data: MOCK_2D_MOCKUP },
+          { status: 201 },
+        )
+      }),
+    )
+
+    await createClient().ai.create({ sourceBase64: 'aW1hZ2U=' })
+
+    expect(capturedBody).toEqual({ source_base64: 'aW1hZ2U=' })
+    expect(idempotencyKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+  })
+
+  it('returns a Job (202) and sends is_async when isAsync: true', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
         return HttpResponse.json(
           {
             job_id: TWO_D_CREATE_JOB_ID,
@@ -198,15 +256,13 @@ describe('ai.create() and waitForReady()', () => {
 
     const job = await createClient().ai.create({
       sourceUrl: 'https://example.com/product.jpg',
-      name: 'Front view',
-      idempotencyKey: 'front-view-v1',
+      isAsync: true,
     })
 
     expect(capturedBody).toEqual({
       source_url: 'https://example.com/product.jpg',
-      name: 'Front view',
+      is_async: true,
     })
-    expect(idempotencyKey).toBe('front-view-v1')
     expect(job).toEqual({
       jobId: TWO_D_CREATE_JOB_ID,
       kind: '2d_create',
@@ -215,31 +271,28 @@ describe('ai.create() and waitForReady()', () => {
     })
   })
 
-  it('sends only source_base64 with a generated idempotency key', async () => {
+  it('passes through seed print_areas (with names) on create', async () => {
     let capturedBody: Record<string, unknown> = {}
-    let idempotencyKey: string | null = null
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
-        idempotencyKey = request.headers.get('Idempotency-Key')
         return HttpResponse.json(
-          {
-            job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
-            status: 'queued',
-            status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
-          },
-          { status: 202 },
+          { success: true, data: MOCK_2D_MOCKUP },
+          { status: 201 },
         )
       }),
     )
 
-    await createClient().ai.create({ sourceBase64: 'aW1hZ2U=' })
+    await createClient().ai.create({
+      sourceUrl: 'https://example.com/product.jpg',
+      printAreas: [
+        { points: [[0, 0], [1, 0], [1, 1], [0, 1]], name: 'Front' },
+      ],
+    })
 
-    expect(capturedBody).toEqual({ source_base64: 'aW1hZ2U=' })
-    expect(idempotencyKey).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-    )
+    const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
+    expect(printAreas).toHaveLength(1)
+    expect(printAreas[0]!['name']).toBe('Front')
   })
 
   it('rejects both or neither source before making a request', async () => {
@@ -260,11 +313,11 @@ describe('ai.create() and waitForReady()', () => {
             kind: '2d_create',
             status: 'succeeded',
             mockup_uuid: MOCK_2D_MOCKUP.mockup_id,
-            result_url: `/api/v1/sudoai/2d-mockup/${MOCK_2D_MOCKUP.mockup_id}`,
+            result_url: `/api/v1/sudoai/2d-mockups/${MOCK_2D_MOCKUP.mockup_id}`,
           },
         }),
       ),
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, () =>
         HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
       ),
     )
@@ -381,7 +434,7 @@ describe('ai.updatePrintAreas()', () => {
     }]
     server.use(
       http.put(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id/print-areas`,
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/print-areas`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json({
@@ -456,7 +509,7 @@ describe('ai 2D-mockup catalog', () => {
 
   it('gets a single 2D mockup', async () => {
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, () =>
         HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
       ),
     )
@@ -467,12 +520,13 @@ describe('ai 2D-mockup catalog', () => {
     expect(mockup.quads?.[0]!.printAreaId).toBe(
       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     )
+    expect(mockup.quads?.[0]!.name).toBe('Front')
   })
 
   it('deletes a 2D mockup', async () => {
     let hitPath = ''
     server.use(
-      http.delete(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/:id`, ({ request }) => {
+      http.delete(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, ({ request }) => {
         hitPath = new URL(request.url).pathname
         return HttpResponse.json({ success: true, data: { deleted: true } })
       }),
@@ -483,7 +537,7 @@ describe('ai 2D-mockup catalog', () => {
       client.ai.delete('99999999-9999-9999-9999-999999999999'),
     ).resolves.toBeUndefined()
     expect(hitPath).toBe(
-      '/api/v1/sudoai/2d-mockup/99999999-9999-9999-9999-999999999999',
+      '/api/v1/sudoai/2d-mockups/99999999-9999-9999-9999-999999999999',
     )
   })
 })

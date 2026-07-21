@@ -81,7 +81,7 @@ export interface ClientConfig {
 }
 
 /** SDK version, surfaced in the User-Agent header. Keep in sync with package.json. */
-const SDK_VERSION = '1.3.0'
+const SDK_VERSION = '2.0.0'
 
 /** Initial backoff in ms for exponential retry */
 const INITIAL_BACKOFF_MS = 500

@@ -64,6 +64,7 @@ export const MOCK_AI_RENDER_RESPONSE = {
         export_format: 'png',
       },
     ],
+    render_uuid: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
   },
 }
 
@@ -80,6 +81,7 @@ export const MOCK_2D_MOCKUP = {
       print_area_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       points: [[0, 0], [1, 0], [1, 1], [0, 1]],
       sort_order: 0,
+      name: 'Front',
     },
   ],
   version: 1,
@@ -278,14 +280,17 @@ export const handlers = [
     return HttpResponse.json(MOCK_RENDER_RESPONSE)
   }),
 
-  // AI 2D-mockup Render
-  http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockup/render`, ({ request }) => {
-    const apiKey = request.headers.get('x-api-key')
-    if (apiKey !== TEST_API_KEY) {
-      return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
-    }
-    return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
-  }),
+  // AI 2D-mockup Render (mockup id in path)
+  http.post(
+    `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+    ({ request }) => {
+      const apiKey = request.headers.get('x-api-key')
+      if (apiKey !== TEST_API_KEY) {
+        return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+      }
+      return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
+    },
+  ),
 
   // Upload
   http.post(`${TEST_BASE_URL}/api/v1/psd/upload`, ({ request }) => {
