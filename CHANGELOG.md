@@ -3,6 +3,30 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-07-21
+
+### Changed
+
+- **BREAKING — `client.ai.create()` is synchronous by default.** It now returns
+  the ready `TwoDMockupDetails` (HTTP 201) instead of an accepted job. Pass
+  `isAsync: true` to get the old behavior: a `Job` (HTTP 202) you await with
+  `client.ai.waitForReady(job)`. `waitForReady` is retained for the async flow.
+- **BREAKING — 2D-mockup paths are pluralized** (`2d-mockup` -> `2d-mockups`).
+  `render` / `get` / `updatePrintAreas` / `delete` now target
+  `/api/v1/sudoai/2d-mockups/...`; the old singular paths are gone.
+- **BREAKING — `client.ai.render()` takes the mockup id in the path**
+  (`POST /api/v1/sudoai/2d-mockups/{mockupId}/render`). The `mockup_uuid` body
+  field has been removed. Render remains synchronous (no `isAsync`).
+
+### Added
+
+- `client.ai.create()` accepts optional seed `printAreas` (4-point quads, each
+  with an optional `name`).
+- `AIRenderResult.renderUuid` — the render's transaction id, for correlating
+  with webhook deliveries.
+- `TwoDMockupQuad.name` / `TwoDPrintAreaInput.name` — print areas can carry an
+  optional display name (create seed, `updatePrintAreas`, and read responses).
+
 ## [1.2.0] - 2026-06-24
 
 ### Added

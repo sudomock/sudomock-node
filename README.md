@@ -178,10 +178,11 @@ const job = await client.renders.createVideo({
 })
 ```
 
-### SudoAI 2D Mockups (`client.ai`)
+### 2D Mockups (`client.ai`)
 
 Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
-mockup catalog. `client.ai.render` posts to `/api/v1/sudoai/2d-mockup/render`
+mockup catalog. `client.ai.render` posts to
+`/api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id lives in the path)
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
 `color`.
 
@@ -198,24 +199,25 @@ const result = await client.ai.render({
   exportOptions: { imageFormat: 'webp', imageSize: 2048, quality: 90 },
 })
 
-console.log(result.url)                       // first rendered file
-console.log(result.printFiles[0].durationMs)  // 2340
+console.log(result.url)                        // first rendered file
+console.log(result.renderUuid)                 // correlate with webhooks
+console.log(result.printFiles[0].durationMs)   // 2340
 console.log(result.printFiles[0].exportFormat) // 'webp'
 ```
 
 #### 2D mockups: create via API
 
-Create a reusable 2D mockup, wait until it is ready, then render artwork. Creation
-costs **25 credits**. If the source image is unsuitable, the **25 credits** are
-refunded automatically.
+Create a reusable 2D mockup, then render artwork. By default creation is
+**synchronous**: `create()` resolves with the ready mockup (including its
+`quads`). Creation costs **25 credits**. If the source image is unsuitable, the
+**25 credits** are refunded automatically.
 
 ```typescript
-const pending = await client.ai.create({
+const mockup = await client.ai.create({
   sourceUrl: 'https://example.com/product.jpg',
   name: 'Front view',
   idempotencyKey: 'front-view-v1',
 })
-const mockup = await client.ai.waitForReady(pending, { intervalMs: 2_000 })
 
 const printArea = mockup.quads[0]
 if (!printArea) throw new Error('No print area available')
@@ -230,12 +232,24 @@ const result = await client.ai.render({
 console.log(result.url)
 ```
 
-Update all print areas on a ready mockup with 1 to 8 four-point quads (**0
-credits**):
+Prefer to create in the background? Pass `isAsync: true` and `create()` resolves
+with a `Job` you await with `waitForReady`:
+
+```typescript
+const job = await client.ai.create({
+  sourceUrl: 'https://example.com/product.jpg',
+  isAsync: true,
+})
+const mockup = await client.ai.waitForReady(job, { intervalMs: 2_000 })
+```
+
+Update all print areas on a ready mockup with 1 to 8 four-point quads (each with
+an optional `name`, **0 credits**):
 
 ```typescript
 const updated = await client.ai.updatePrintAreas('mockup-uuid', [{
   points: [[100, 100], [900, 100], [900, 900], [100, 900]],
+  name: 'Front',
 }])
 console.log(updated.printAreas)
 ```
@@ -247,10 +261,6 @@ const { mockups, total } = await client.ai.list({ limit: 50 })
 const mockup = await client.ai.get('mockup-uuid')
 await client.ai.delete('mockup-uuid')
 ```
-
-> The legacy `POST /sudoai/render` endpoint is a deprecated alias of
-> `/sudoai/2d-mockup/render` (sunsets 2026-09-30); this SDK calls the canonical
-> endpoint directly.
 
 ### Uploads
 

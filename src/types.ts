@@ -361,6 +361,11 @@ export interface AIPrintFile {
 
 export interface AIRenderResult {
   printFiles: AIPrintFile[]
+  /**
+   * Render UUID from the render response. Use it to correlate this render with
+   * webhook deliveries and transaction records.
+   */
+  renderUuid?: string
   /** Convenience accessor: URL of the first rendered file */
   url: string
 }
@@ -371,6 +376,21 @@ export type Create2DMockupParams = {
   name?: string
   /** Optional key for safely retrying the same create request. */
   idempotencyKey?: string
+  /**
+   * Optional seed print areas (4-point quads, each with an optional `name`).
+   * When omitted the backend auto-detects the print area(s).
+   */
+  printAreas?: readonly TwoDPrintAreaInput[]
+  /**
+   * Create the mockup asynchronously.
+   *
+   * When `true`, the API enqueues creation and immediately returns a
+   * {@link Job} (HTTP 202) instead of blocking until the mockup is ready. Pass
+   * the job to `client.ai.waitForReady()` (or poll via `client.jobs`).
+   *
+   * Default: `false` (synchronous, returns the ready {@link TwoDMockupDetails}).
+   */
+  isAsync?: boolean
 } & (
   | { sourceUrl: string; sourceBase64?: never }
   | { sourceUrl?: never; sourceBase64: string }
@@ -408,11 +428,15 @@ export interface TwoDMockupQuad {
   printAreaId: string
   points: number[][]
   sortOrder: number
+  /** Optional display name for the print area. */
+  name?: string
 }
 
 /** Replacement geometry for one 2D print area. */
 export interface TwoDPrintAreaInput {
   points: TwoDQuadPoints
+  /** Optional display name for the print area. */
+  name?: string
 }
 
 /** Updated geometry returned by `client.ai.updatePrintAreas()`. */
