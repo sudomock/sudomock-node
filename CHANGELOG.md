@@ -3,6 +3,17 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-07-21
+
+### Added
+
+- **Async 2D renders:** `client.ai.render({ isAsync: true })` enqueues the
+  render and resolves with a `Job` of kind `'2d_render'` (HTTP 202) instead of
+  blocking. Await it with `client.jobs.waitForJob(job.jobId)` (or poll via
+  `client.jobs`); a `2d_render.succeeded` / `2d_render.failed` webhook also
+  fires. Omitting `isAsync` (the default) is unchanged: a synchronous
+  `AIRenderResult` (HTTP 200). `isAsync` is optional and additive.
+
 ## [2.0.0] - 2026-07-21
 
 ### Changed

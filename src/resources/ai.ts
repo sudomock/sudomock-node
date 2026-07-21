@@ -151,10 +151,17 @@ export class AIResource {
    *
    * Targets `POST /api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id
    * lives in the path). Each print area must supply `artworkUrl` OR `color`.
-   * Costs 5 credits. Returns the rendered `printFiles` plus a `renderUuid` you
-   * can use to correlate the render with webhook / transaction records.
+   * Costs 5 credits.
    *
-   * @example
+   * By default this blocks until the render finishes and resolves with an
+   * {@link AIRenderResult} (the rendered `printFiles` plus a `renderUuid` you
+   * can use to correlate the render with webhook / transaction records). Pass
+   * `isAsync: true` to enqueue the render instead: the API responds with
+   * HTTP 202 and this method resolves with a {@link Job} of kind `'2d_render'`
+   * you await with `client.jobs.waitForJob(job.jobId)` (or poll via
+   * `client.jobs`).
+   *
+   * @example Synchronous (default)
    * ```ts
    * const result = await client.ai.render({
    *   mockupId: 'mockup-uuid',
@@ -165,20 +172,48 @@ export class AIResource {
    * })
    * console.log(result.url, result.renderUuid)
    * ```
+   *
+   * @example Asynchronous
+   * ```ts
+   * const job = await client.ai.render({
+   *   mockupId: 'mockup-uuid',
+   *   printAreas: [{ uuid: 'print-area-uuid', artworkUrl: '...' }],
+   *   isAsync: true,
+   * })
+   * const done = await client.jobs.waitForJob(job.jobId)
+   * console.log(done.resultUrl)
+   * ```
    */
-  async render(params: AIRenderParams): Promise<AIRenderResult> {
-    const body = {
+  render(params: AIRenderParams & { isAsync: true }): Promise<Job>
+  render(params: AIRenderParams): Promise<AIRenderResult>
+  async render(params: AIRenderParams): Promise<AIRenderResult | Job> {
+    const body: Record<string, unknown> = {
       printAreas: params.printAreas,
       exportOptions: params.exportOptions,
     }
+    // Only send is_async when explicitly opting into the async job flow; the
+    // default (sync) render must not carry the flag.
+    if (params.isAsync) {
+      body['isAsync'] = true
+    }
 
-    const result = await this.client.request<AIRenderResult>({
+    const { status, data } = await this.client.requestWithStatus<
+      AIRenderResult | Job
+    >({
       method: 'POST',
       path: `/api/v1/sudoai/2d-mockups/${params.mockupId}/render`,
       body,
       timeout: AI_RENDER_TIMEOUT,
     })
 
+    // 202 Accepted -> async job (has `job_id`, not `print_files`). Sync 200
+    // returns the rendered result directly, so we must NOT read printFiles[0]
+    // here (that would crash on the async envelope).
+    if (status === 202 || isJobBody(data)) {
+      return toJob(data)
+    }
+
+    const result = data as AIRenderResult
     // Add convenience `url` getter
     return {
       ...result,
