@@ -92,6 +92,96 @@ describe('renders.create()', () => {
     expect(Object.keys(exportOpts)).not.toContain('d_p_i')
   })
 
+  it('sends text-only personalization and returns text details and warnings', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          success: true,
+          data: {
+            print_files: [{ export_path: 'https://cdn.sudomock.com/name.webp', smart_object_uuid: '' }],
+            text_layers: [{
+              uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+              name: 'Customer Name',
+              requested_font: 'Montserrat-Bold',
+              resolved_font: { family: 'Montserrat', postscript_name: 'Montserrat-Bold' },
+              match_source: 'override_name',
+              glyph_coverage_ok: true,
+              segments: null,
+            }],
+          },
+          warnings: [{ code: 'TEXT_FIT_SHRUNK', message: 'Text was resized to fit.' }],
+        })
+      }),
+    )
+
+    const result = await createClient().renders.create({
+      mockupId: '11111111-1111-1111-1111-111111111111',
+      textLayers: [
+        {
+          uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          text: 'Aylin',
+          font: 'Montserrat-Bold',
+          fontSize: 120,
+          color: '#FFFFFF',
+          strokeColor: ['#111111', null],
+          fit: 'overflow',
+        },
+        {
+          uuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          segments: [{ index: 1, text: 'Studio' }],
+        },
+      ],
+      exportOptions: { imageFormat: 'webp', imageSize: 2048 },
+    })
+
+    expect(capturedBody).toEqual({
+      mockup_uuid: '11111111-1111-1111-1111-111111111111',
+      text_layers: [
+        {
+          uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          text: 'Aylin',
+          font: 'Montserrat-Bold',
+          font_size: 120,
+          color: '#FFFFFF',
+          stroke_color: ['#111111', null],
+          fit: 'overflow',
+        },
+        {
+          uuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          segments: [{ index: 1, text: 'Studio' }],
+        },
+      ],
+      export_options: { image_format: 'webp', image_size: 2048 },
+    })
+    expect(result.textLayers?.[0]?.resolvedFont?.postscriptName).toBe('Montserrat-Bold')
+    expect(result.warnings?.[0]?.code).toBe('TEXT_FIT_SHRUNK')
+  })
+
+  it('surfaces backend error codes', async () => {
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders`, () =>
+        HttpResponse.json(
+          {
+            detail: 'The requested text layer was not found.',
+            error_code: 'TEXT_LAYER_NOT_FOUND',
+            success: false,
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    const error = await createClient().renders.create({
+      mockupId: '11111111-1111-1111-1111-111111111111',
+      textLayers: [{ uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', text: 'Aylin' }],
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(ValidationError)
+    expect(error).toMatchObject({ code: 'TEXT_LAYER_NOT_FOUND' })
+  })
+
   it('throws CreditError on 402', async () => {
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders`, () => {
@@ -695,6 +785,8 @@ describe('uploads.create()', () => {
     expect(result.uuid).toBe('11111111-1111-1111-1111-111111111111')
     expect(result.name).toBe('Test Mockup')
     expect(result.smartObjects).toHaveLength(1)
+    expect(result.textLayers[0]!.name).toBe('Customer Name')
+    expect(result.warnings?.[0]?.code).toBe('PSD_HIDDEN_SMART_OBJECTS')
   })
 
   it('sends upload params in snake_case', async () => {

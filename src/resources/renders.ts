@@ -14,7 +14,7 @@ export class RendersResource {
   constructor(private readonly client: HttpClient) {}
 
   /**
-   * Render a mockup with user-provided artwork.
+   * Render a mockup with artwork, text replacements, or both.
    *
    * By default this blocks until the render finishes and resolves with a
    * {@link RenderResult}. Pass `isAsync: true` to enqueue the render instead:
@@ -51,6 +51,7 @@ export class RendersResource {
     const body = {
       mockupUuid: params.mockupId,
       smartObjects: params.smartObjects,
+      textLayers: params.textLayers,
       exportOptions: params.exportOptions,
       exportLabel: params.exportLabel,
       isAsync: params.isAsync,

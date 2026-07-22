@@ -29,6 +29,8 @@ describe('mockups.list()', () => {
     expect(mockup.smartObjects).toHaveLength(1)
     expect(mockup.smartObjects[0]!.printAreaPresets).toHaveLength(1)
     expect(mockup.smartObjects[0]!.blendMode).toBe('normal')
+    expect(mockup.textLayers[0]!.fontPostscriptName).toBe('Montserrat-Bold')
+    expect(mockup.textLayers[0]!.isEditable).toBe(true)
   })
 
   it('passes query params correctly', async () => {

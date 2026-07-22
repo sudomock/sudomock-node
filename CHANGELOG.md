@@ -3,6 +3,17 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-07-23
+
+### Added
+
+- PSD text personalization through `renders.create({ textLayers })`, including
+  single-style text, styled segments, font, size, color, outline color, and fit
+  controls. `smartObjects` is optional for text-only renders.
+- Typed text-layer metadata on mockup/upload responses and font details on
+  render responses.
+- Successful response warnings and backend error codes are now surfaced.
+
 ## [2.1.0] - 2026-07-21
 
 ### Added

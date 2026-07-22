@@ -110,6 +110,35 @@ console.log(render.url)        // convenience: first file URL
 console.log(render.printFiles) // full array
 ```
 
+#### Batch text personalization
+
+Use an editable text layer from the mockup response to create personalized
+outputs. `smartObjects` is optional for text-only renders, and `fit` defaults to
+`'overflow'`.
+
+```typescript
+const mockup = await client.mockups.get('mockup-uuid')
+const nameLayer = mockup.textLayers.find((layer) => layer.name === 'Customer Name')
+if (!nameLayer?.isEditable) throw new Error('Customer Name is not editable')
+
+const names = ['Aylin', 'Deniz', 'Mert']
+const renders = await Promise.all(names.map((name) => client.renders.create({
+  mockupId: mockup.uuid,
+  textLayers: [{
+    uuid: nameLayer.uuid,
+    text: name,
+    font: 'Montserrat-Bold',
+    color: '#FFFFFF',
+    fit: 'overflow',
+  }],
+})))
+
+for (const render of renders) {
+  console.log(render.url)
+  for (const warning of render.warnings ?? []) console.warn(warning.code, warning.message)
+}
+```
+
 ### Async Renders & Jobs
 
 Pass `isAsync: true` to enqueue a render instead of blocking. The API responds
@@ -425,7 +454,7 @@ try {
   } else if (err instanceof TimeoutError) {
     console.log('Request timed out')
   } else if (err instanceof SudoMockError) {
-    console.log(`API error ${err.status}: ${err.message}`)
+    console.log(`API error ${err.status} (${err.code}): ${err.message}`)
   }
 }
 ```
@@ -464,6 +493,8 @@ The SDK is written in TypeScript with full type definitions for all methods and 
 import SudoMock, {
   type Mockup,
   type SmartObject,
+  type TextLayer,
+  type TextLayerInput,
   type RenderResult,
   type AccountResult,
   type CreateRenderParams,

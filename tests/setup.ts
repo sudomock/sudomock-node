@@ -35,7 +35,26 @@ export const MOCK_MOCKUP = {
       blend_mode: 'normal',
     },
   ],
-  text_layers: [],
+  text_layers: [
+    {
+      uuid: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      name: 'Customer Name',
+      text_content: 'Isabella',
+      font_postscript_name: 'Montserrat-Bold',
+      font_size: 120,
+      color: '#FFFFFF',
+      font_available: true,
+      is_editable: true,
+      segment_count: 1,
+      segments: null,
+      visible: true,
+      has_stroke_effect: true,
+      stroke_count: 2,
+      has_color_overlay: false,
+      has_clipped_artwork: false,
+      suggested_edit_together: null,
+    },
+  ],
   collections: [],
   thumbnails: [
     { width: 720, url: 'https://cdn.sudomock.com/thumbs/720.webp' },
@@ -125,6 +144,12 @@ export const MOCK_UPLOAD_RESPONSE = {
   success: true,
   data: MOCK_MOCKUP,
   message: '',
+  warnings: [
+    {
+      code: 'PSD_HIDDEN_SMART_OBJECTS',
+      message: 'Some hidden layers are not available for personalization.',
+    },
+  ],
 }
 
 export const MOCK_SESSION_RESPONSE = {

@@ -81,7 +81,7 @@ export interface ClientConfig {
 }
 
 /** SDK version, surfaced in the User-Agent header. Keep in sync with package.json. */
-const SDK_VERSION = '2.1.0'
+const SDK_VERSION = '2.2.0'
 
 /** Initial backoff in ms for exponential retry */
 const INITIAL_BACKOFF_MS = 500
@@ -151,9 +151,19 @@ export class HttpClient {
         // Some endpoints (like studio/create-session) don't use the data wrapper.
         // `rawEnvelope` keeps the whole body so sibling pagination metadata
         // (total/limit/offset alongside `data`) survives.
-        const data = options.rawEnvelope
+        let data = options.rawEnvelope
           ? responseBody
           : (responseBody['data'] ?? responseBody)
+        if (
+          !options.rawEnvelope &&
+          responseBody['data'] !== undefined &&
+          responseBody['warnings'] !== undefined &&
+          data !== null &&
+          typeof data === 'object' &&
+          !Array.isArray(data)
+        ) {
+          data = { ...data, warnings: responseBody['warnings'] ?? [] }
+        }
         return { status: response.status, data: keysToCamel(data) as T }
       } catch (err) {
         if (err instanceof SudoMockError) {
@@ -265,27 +275,32 @@ export class HttpClient {
       (body as ApiErrorBody).detail ??
       (body as ApiErrorBody).message ??
       `HTTP ${status}`
+    const code = (body as ApiErrorBody).error_code
 
     switch (status) {
       case 400:
       case 422:
-        return new ValidationError(detail)
+        return new ValidationError(detail, code)
       case 401:
-        return new AuthenticationError(detail)
+        return new AuthenticationError(detail, code)
       case 402:
-        return new CreditError(detail)
+        return new CreditError(detail, code)
       case 404:
-        return new NotFoundError(detail)
+        return new NotFoundError(detail, code)
       case 429: {
         const retryAfterHeader = headers.get('Retry-After')
         const retryAfter = retryAfterHeader ? parseInt(retryAfterHeader, 10) : null
-        return new RateLimitError(detail, Number.isNaN(retryAfter) ? null : retryAfter)
+        return new RateLimitError(
+          detail,
+          Number.isNaN(retryAfter) ? null : retryAfter,
+          code,
+        )
       }
       default:
         if (status >= 500) {
-          return new InternalError(detail)
+          return new InternalError(detail, code)
         }
-        return new SudoMockError(detail, status)
+        return new SudoMockError(detail, status, code)
     }
   }
 
