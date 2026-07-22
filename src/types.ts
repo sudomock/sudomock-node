@@ -423,9 +423,11 @@ export interface AIPlacement {
 export interface AIPrintArea {
   /** Print-area UUID. */
   uuid: string
-  /** URL of the artwork to place. Supply `artworkUrl` OR `color`. */
+  /** URL of the artwork to place. Supply `base64`, `artworkUrl`, OR `color`. */
   artworkUrl?: string
-  /** Hex color overlay (e.g. '#ff0000'). Supply `artworkUrl` OR `color`. */
+  /** Raw base64-encoded artwork bytes (no data: prefix). Supply `base64`, `artworkUrl`, OR `color`. */
+  base64?: string
+  /** Hex color overlay (e.g. '#ff0000'). Supply `base64`, `artworkUrl`, OR `color`. */
   color?: string
   /** Image adjustments for this print area. */
   adjustments?: AIAdjustments
