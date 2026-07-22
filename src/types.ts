@@ -91,6 +91,42 @@ export interface SmartObject {
 }
 
 // ---------------------------------------------------------------------------
+// Text Layers
+// ---------------------------------------------------------------------------
+
+export interface TextSegment {
+  index: number
+  text: string
+  fontPostscriptName: string | null
+  fontSize: number | null
+  color: string | null
+}
+
+export interface TextLayer {
+  uuid: string
+  name: string
+  textContent: string | null
+  fontPostscriptName: string | null
+  fontSize: number | null
+  color: string | null
+  fontAvailable: boolean | null
+  isEditable: boolean
+  segmentCount: number
+  segments: TextSegment[] | null
+  visible: boolean | null
+  hasStrokeEffect: boolean
+  strokeCount: number
+  hasColorOverlay: boolean
+  hasClippedArtwork: boolean | null
+  suggestedEditTogether: string[] | null
+}
+
+export interface ApiWarning {
+  code: string
+  message: string
+}
+
+// ---------------------------------------------------------------------------
 // Mockup
 // ---------------------------------------------------------------------------
 
@@ -101,9 +137,10 @@ export interface Mockup {
   width: number | null
   height: number | null
   smartObjects: SmartObject[]
-  textLayers: unknown[]
+  textLayers: TextLayer[]
   collections: unknown[]
   thumbnails: ThumbnailSize[]
+  warnings?: ApiWarning[]
 }
 
 // ---------------------------------------------------------------------------
@@ -218,11 +255,39 @@ export interface RenderSmartObjectInput {
   adjustmentLayers?: AdjustmentLayers
 }
 
+export interface TextSegmentInput {
+  /** Segment position from the text layer's segments list (0-31) */
+  index: number
+  /** Replacement text (1-200 characters) */
+  text: string
+}
+
+export interface TextLayerInput {
+  /** Text layer UUID from a mockup or upload response */
+  uuid: string
+  /** Replacement text for a single-style layer (1-500 characters) */
+  text?: string
+  /** Segment replacements for a multi-style layer */
+  segments?: TextSegmentInput[]
+  /** Font UUID or PostScript name */
+  font?: string
+  /** Font size at the mockup's native resolution */
+  fontSize?: number
+  /** Text color as a six-digit hex value */
+  color?: string
+  /** Outline colors from front to back; `null` keeps an outline unchanged */
+  strokeColor?: string | Array<string | null>
+  /** Longer-text handling (default: 'overflow') */
+  fit?: 'shrink' | 'clip' | 'overflow'
+}
+
 export interface CreateRenderParams {
   /** Mockup UUID to render */
   mockupId: string
-  /** Smart objects with assets */
-  smartObjects: RenderSmartObjectInput[]
+  /** Smart objects with assets. Optional when textLayers is provided. */
+  smartObjects?: RenderSmartObjectInput[]
+  /** Text layer replacements. Optional when smartObjects is provided. */
+  textLayers?: TextLayerInput[]
   /** Export options */
   exportOptions?: ExportOptions
   /** Optional label for the export file */
@@ -250,6 +315,29 @@ export interface PrintFile {
   renderUuid?: string
 }
 
+export interface ResolvedFontInfo {
+  family: string | null
+  postscriptName: string | null
+}
+
+export interface TextSegmentRenderInfo {
+  index: number
+  requestedFont: string | null
+  resolvedFont: ResolvedFontInfo | null
+  matchSource: string
+  glyphCoverageOk: boolean
+}
+
+export interface TextLayerRenderInfo {
+  uuid: string
+  name: string | null
+  requestedFont: string | null
+  resolvedFont: ResolvedFontInfo | null
+  matchSource: string
+  glyphCoverageOk: boolean
+  segments: TextSegmentRenderInfo[] | null
+}
+
 export interface RenderResult {
   printFiles: PrintFile[]
   /**
@@ -259,6 +347,10 @@ export interface RenderResult {
    * is `GET /jobs/{jobId}`, keyed by {@link Job.jobId}.
    */
   renderUuid?: string
+  /** Font details for each requested text layer */
+  textLayers?: TextLayerRenderInfo[] | null
+  /** Non-fatal advisories for this render */
+  warnings?: ApiWarning[]
   /** Convenience accessor: URL of the first rendered file */
   url: string
 }
@@ -534,9 +626,10 @@ export interface UploadResult {
   width: number | null
   height: number | null
   smartObjects: SmartObject[]
-  textLayers: unknown[]
+  textLayers: TextLayer[]
   collections: unknown[]
   thumbnails: ThumbnailSize[]
+  warnings?: ApiWarning[]
 }
 
 // ---------------------------------------------------------------------------
@@ -926,6 +1019,7 @@ export interface ApiResponse<T> {
   success: boolean
   data: T
   message?: string
+  warnings?: ApiWarning[]
 }
 
 // ---------------------------------------------------------------------------
