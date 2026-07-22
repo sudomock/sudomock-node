@@ -3,6 +3,12 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.1] - 2026-07-23
+
+### Added
+
+- 2D render print areas now accept a `base64` artwork field, matching the PSD render path. Supply `base64`, `artworkUrl`, or `color` per area.
+
 ## [2.2.0] - 2026-07-23
 
 ### Added
