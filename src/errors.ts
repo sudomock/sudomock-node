@@ -22,32 +22,32 @@ export class SudoMockError extends Error {
 
 /** 401 -- Invalid or missing API key */
 export class AuthenticationError extends SudoMockError {
-  constructor(message = 'Invalid or missing API key') {
-    super(message, 401, 'authentication_error')
+  constructor(message = 'Invalid or missing API key', code = 'authentication_error') {
+    super(message, 401, code)
     this.name = 'AuthenticationError'
   }
 }
 
 /** 402 -- Insufficient credits */
 export class CreditError extends SudoMockError {
-  constructor(message = 'Insufficient credits') {
-    super(message, 402, 'credit_error')
+  constructor(message = 'Insufficient credits', code = 'credit_error') {
+    super(message, 402, code)
     this.name = 'CreditError'
   }
 }
 
 /** 404 -- Resource not found */
 export class NotFoundError extends SudoMockError {
-  constructor(message = 'Resource not found') {
-    super(message, 404, 'not_found')
+  constructor(message = 'Resource not found', code = 'not_found') {
+    super(message, 404, code)
     this.name = 'NotFoundError'
   }
 }
 
 /** 422 / 400 -- Invalid request parameters */
 export class ValidationError extends SudoMockError {
-  constructor(message = 'Invalid request parameters') {
-    super(message, 400, 'validation_error')
+  constructor(message = 'Invalid request parameters', code = 'validation_error') {
+    super(message, 400, code)
     this.name = 'ValidationError'
   }
 }
@@ -57,8 +57,12 @@ export class RateLimitError extends SudoMockError {
   /** Seconds to wait before retrying (from Retry-After header) */
   readonly retryAfter: number | null
 
-  constructor(message = 'Rate limit exceeded', retryAfter: number | null = null) {
-    super(message, 429, 'rate_limit_error')
+  constructor(
+    message = 'Rate limit exceeded',
+    retryAfter: number | null = null,
+    code = 'rate_limit_error',
+  ) {
+    super(message, 429, code)
     this.name = 'RateLimitError'
     this.retryAfter = retryAfter
   }
@@ -66,8 +70,8 @@ export class RateLimitError extends SudoMockError {
 
 /** 500+ -- Server-side error (transient, safe to retry) */
 export class InternalError extends SudoMockError {
-  constructor(message = 'Internal server error') {
-    super(message, 500, 'internal_error')
+  constructor(message = 'Internal server error', code = 'internal_error') {
+    super(message, 500, code)
     this.name = 'InternalError'
   }
 }
