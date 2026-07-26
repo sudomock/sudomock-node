@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## [2.3.0] - 2026-07-26
+
 ### Added
 
 - `client.images.removeBackground({ url })` (or `{ base64 }`) removes the
