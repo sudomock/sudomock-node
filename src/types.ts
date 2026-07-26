@@ -220,6 +220,14 @@ export interface SmartObjectAsset {
   size?: AssetSize
   /** Custom position for the artwork */
   position?: AssetPosition
+  /**
+   * Remove the background from this artwork before placing it, isolating the
+   * subject onto a clean transparent cutout.
+   *
+   * Adds 25 credits per unique artwork to the render cost (the same artwork
+   * reused across several smart objects is charged once). Default: `false`.
+   */
+  removeBackground?: boolean
 }
 
 export interface SmartObjectColor {
@@ -433,6 +441,14 @@ export interface AIPrintArea {
   adjustments?: AIAdjustments
   /** Artwork placement options. */
   placement?: AIPlacement
+  /**
+   * Remove the background from this print area's artwork before placing it,
+   * isolating the subject onto a clean transparent cutout.
+   *
+   * Adds 25 credits per unique artwork to the render cost (the same artwork
+   * reused across several print areas is charged once). Default: `false`.
+   */
+  removeBackground?: boolean
 }
 
 export interface AIRenderParams {
@@ -598,6 +614,37 @@ export interface TwoDMockupListResult {
   limit: number
   /** Offset that was applied. */
   offset: number
+}
+
+// ---------------------------------------------------------------------------
+// Background removal (client.images)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parameters for `client.images.removeBackground()`. Supply exactly one image
+ * source: a public `url` or raw `base64` bytes.
+ */
+export type RemoveBackgroundParams = {
+  /**
+   * MIME type of the `base64` bytes. Only meaningful alongside `base64`;
+   * defaults to `'image/png'`.
+   */
+  contentType?: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+} & (
+  | { url: string; base64?: never }
+  | { url?: never; base64: string }
+)
+
+/** The transparent-PNG cutout produced by `client.images.removeBackground()`. */
+export interface RemoveBackgroundResult {
+  /** Signed URL of the transparent-PNG cutout, valid for 7 days. */
+  url: string
+  /** Cutout width in pixels. */
+  width: number
+  /** Cutout height in pixels. */
+  height: number
+  /** Credits charged for this call. */
+  creditsCharged: number
 }
 
 // ---------------------------------------------------------------------------

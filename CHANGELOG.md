@@ -3,6 +3,18 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `client.images.removeBackground({ url })` (or `{ base64 }`) removes the
+  background from an image and resolves with a transparent-PNG cutout URL valid
+  for 7 days, ready to reuse as render artwork. Costs 25 credits; credits are
+  refunded automatically if processing fails.
+- `removeBackground` on render assets (`renders.create`) and 2D print areas
+  (`ai.render`) cleans the artwork inline during a render. Adds 25 credits per
+  unique artwork. Optional and additive; the default (`false`) is unchanged.
+
 ## [2.2.1] - 2026-07-23
 
 ### Added

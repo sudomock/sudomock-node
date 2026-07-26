@@ -3,6 +3,7 @@ import { SudoMockError } from './errors'
 import { MockupsResource } from './resources/mockups'
 import { RendersResource } from './resources/renders'
 import { AIResource } from './resources/ai'
+import { ImagesResource } from './resources/images'
 import { UploadsResource } from './resources/uploads'
 import { AccountResource } from './resources/account'
 import { StudioResource } from './resources/studio'
@@ -44,6 +45,8 @@ class SudoMock {
   readonly renders: RendersResource
   /** Create and render reusable 2D mockups */
   readonly ai: AIResource
+  /** Standalone image operations (background removal) */
+  readonly images: ImagesResource
   /** Upload PSD files */
   readonly uploads: UploadsResource
   /** Account info and usage */
@@ -74,6 +77,7 @@ class SudoMock {
     this.mockups = new MockupsResource(client)
     this.renders = new RendersResource(client)
     this.ai = new AIResource(client)
+    this.images = new ImagesResource(client)
     this.uploads = new UploadsResource(client)
     this.account = new AccountResource(client)
     this.studio = new StudioResource(client)
@@ -150,6 +154,8 @@ export type {
   TwoDMockupQuad,
   TwoDMockupListResult,
   List2dMockupsParams,
+  RemoveBackgroundParams,
+  RemoveBackgroundResult,
   UploadParams,
   UploadResult,
   AccountResult,
