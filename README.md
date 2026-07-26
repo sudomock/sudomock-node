@@ -311,6 +311,55 @@ const mockup = await client.ai.get('mockup-uuid')
 await client.ai.delete('mockup-uuid')
 ```
 
+### Background Removal (`client.images`)
+
+Remove the background from an image; returns a signed transparent-PNG cutout URL
+valid for 7 days that you can pass straight back as render artwork. Supply
+exactly one of `url` or `base64`. Costs **25 credits** per image; credits are
+refunded automatically if processing fails.
+
+```typescript
+const cutout = await client.images.removeBackground({
+  url: 'https://example.com/product-photo.jpg',
+})
+
+console.log(cutout.url)            // signed transparent-PNG URL
+console.log(cutout.width, cutout.height)
+console.log(cutout.creditsCharged) // 25
+
+// Reuse the cutout URL across renders for 7 days
+const render = await client.renders.create({
+  mockupId: 'mockup-uuid',
+  smartObjects: [{ uuid: 'so-uuid', asset: { url: cutout.url } }],
+})
+```
+
+To clean artwork inline during a render instead, set `removeBackground: true`
+on the render asset or 2D print area. It adds **25 credits per unique artwork**
+to the render (the same artwork reused across several smart objects or print
+areas is charged once).
+
+```typescript
+// PSD render
+await client.renders.create({
+  mockupId: 'mockup-uuid',
+  smartObjects: [{
+    uuid: 'so-uuid',
+    asset: { url: 'https://example.com/photo.jpg', removeBackground: true },
+  }],
+})
+
+// 2D render
+await client.ai.render({
+  mockupId: 'mockup-uuid',
+  printAreas: [{
+    uuid: 'print-area-uuid',
+    artworkUrl: 'https://example.com/photo.jpg',
+    removeBackground: true,
+  }],
+})
+```
+
 ### Uploads
 
 ```typescript
@@ -499,6 +548,8 @@ import SudoMock, {
   type AccountResult,
   type CreateRenderParams,
   type AIRenderParams,
+  type RemoveBackgroundParams,
+  type RemoveBackgroundResult,
   type Job,
   type JobStatus,
   type CreateVideoParams,

@@ -87,6 +87,16 @@ export const MOCK_AI_RENDER_RESPONSE = {
   },
 }
 
+export const MOCK_REMOVE_BACKGROUND_RESPONSE = {
+  success: true,
+  data: {
+    url: 'https://cdn.sudomock.com/bg-cutouts/test/cutout.png',
+    width: 1200,
+    height: 1600,
+    credits_charged: 25,
+  },
+}
+
 export const MOCK_2D_MOCKUP = {
   mockup_id: '99999999-9999-9999-9999-999999999999',
   name: '2D Tee',
@@ -316,6 +326,15 @@ export const handlers = [
       return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
     },
   ),
+
+  // Background removal
+  http.post(`${TEST_BASE_URL}/api/v1/remove-background`, ({ request }) => {
+    const apiKey = request.headers.get('x-api-key')
+    if (apiKey !== TEST_API_KEY) {
+      return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+    }
+    return HttpResponse.json(MOCK_REMOVE_BACKGROUND_RESPONSE)
+  }),
 
   // Upload
   http.post(`${TEST_BASE_URL}/api/v1/psd/upload`, ({ request }) => {

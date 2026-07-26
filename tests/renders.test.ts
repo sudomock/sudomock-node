@@ -92,6 +92,37 @@ describe('renders.create()', () => {
     expect(Object.keys(exportOpts)).not.toContain('d_p_i')
   })
 
+  it('sends the asset remove_background flag in snake_case', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(MOCK_RENDER_RESPONSE)
+      }),
+    )
+
+    await createClient().renders.create({
+      mockupId: 'test-uuid',
+      smartObjects: [
+        {
+          uuid: 'so-uuid',
+          asset: {
+            url: 'https://example.com/artwork.png',
+            removeBackground: true,
+          },
+        },
+      ],
+    })
+
+    const smartObjects = capturedBody['smart_objects'] as Record<
+      string,
+      unknown
+    >[]
+    const asset = smartObjects[0]!['asset'] as Record<string, unknown>
+    expect(asset['remove_background']).toBe(true)
+    expect(Object.keys(asset)).not.toContain('removeBackground')
+  })
+
   it('sends text-only personalization and returns text details and warnings', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
@@ -267,6 +298,34 @@ describe('ai.render() — 2D mockup', () => {
     expect(exportOpts['quality']).toBe(90)
     // Default (sync) render must NOT send is_async.
     expect(capturedBody['is_async']).toBeUndefined()
+  })
+
+  it('sends the print-area remove_background flag in snake_case', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
+        },
+      ),
+    )
+
+    await createClient().ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        {
+          uuid: 'pa-uuid',
+          artworkUrl: 'https://example.com/design.png',
+          removeBackground: true,
+        },
+      ],
+    })
+
+    const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
+    expect(printAreas[0]!['remove_background']).toBe(true)
+    expect(Object.keys(printAreas[0]!)).not.toContain('removeBackground')
   })
 
   it('returns a Job (202) and sends is_async when isAsync: true', async () => {
