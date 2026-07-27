@@ -39,6 +39,7 @@ describe('webhooks CRUD', () => {
     expect(endpoints[0]!.id).toBe(EP_ID)
     expect(endpoints[0]!.url).toBe('https://example.com/hooks/sudomock')
     expect(endpoints[0]!.eventTypes).toContain('render.succeeded')
+    expect(endpoints[0]).not.toHaveProperty('privateEndpointState')
   })
 
   it('creates an endpoint and returns the secret', async () => {

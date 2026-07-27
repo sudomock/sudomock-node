@@ -26,6 +26,7 @@ describe('images.removeBackground()', () => {
     expect(cutout.width).toBe(1200)
     expect(cutout.height).toBe(1600)
     expect(cutout.creditsCharged).toBe(25)
+    expect(cutout).not.toHaveProperty('privateStorageKey')
   })
 
   it('sends only the url source', async () => {

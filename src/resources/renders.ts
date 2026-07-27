@@ -1,4 +1,4 @@
-import type { HttpClient } from '../client'
+import { publicWarnings, type HttpClient } from '../client'
 import type {
   CreateRenderParams,
   RenderResult,
@@ -74,7 +74,13 @@ export class RendersResource {
 
     const result = data as RenderResult
     return {
-      ...result,
+      printFiles: result.printFiles.map((file) => ({
+        exportPath: file.exportPath,
+        smartObjectUuid: file.smartObjectUuid,
+        renderUuid: file.renderUuid,
+      })),
+      renderUuid: result.renderUuid,
+      warnings: publicWarnings(result.warnings),
       url: result.printFiles[0]?.exportPath ?? '',
     }
   }
@@ -83,16 +89,16 @@ export class RendersResource {
    * Render an animated video mockup. Always asynchronous: the API responds
    * with HTTP 202 and a {@link Job} of kind `'video'`.
    *
-   * Credit cost scales with the model, duration, and audio. The free tier
-   * allows a single lifetime video render. `video.durationSeconds` must be one
-   * of the durations the chosen model supports, or the API returns a 400.
+   * Credit cost scales with duration, audio, and the automatically selected
+   * quality tier. The free tier allows a single lifetime video render.
+   * Unsupported durations return a 400.
    *
    * @example
    * ```ts
    * const job = await client.renders.createVideo({
    *   mockupId: 'uuid',
    *   smartObjects: [{ uuid: 'so-uuid', asset: { url: '...' } }],
-   *   video: { durationSeconds: 5, audio: false },
+   *   video: { durationSeconds: 4, audio: false },
    * })
    * const done = await client.jobs.waitForJob(job.jobId)
    * console.log(done.resultUrl) // mp4 URL
@@ -105,11 +111,11 @@ export class RendersResource {
       exportOptions: params.exportOptions,
       imageUrl: params.imageUrl,
       video: {
-        ...params.video,
-        // Default clip length to 5s when the caller omits it (BE default too).
-        durationSeconds: params.video.durationSeconds ?? 5,
+        durationSeconds: params.video.durationSeconds ?? 4,
+        audio: params.video.audio,
+        motion: params.video.motion,
       },
-      webhook: params.webhook,
+      webhook: params.webhook ? { url: params.webhook.url } : undefined,
       exportLabel: params.exportLabel,
     }
 

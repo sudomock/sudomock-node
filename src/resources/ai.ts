@@ -7,6 +7,7 @@ import type {
   Job,
   TwoDMockup,
   TwoDMockupDetails,
+  TwoDMockupQuad,
   TwoDMockupListResult,
   List2dMockupsParams,
   TwoDPrintAreaInput,
@@ -18,6 +19,44 @@ import { JobsResource, isJobBody, toJob } from './jobs'
 
 /** Default 2D-mockup render timeout: 120s */
 const AI_RENDER_TIMEOUT = 120_000
+
+function publicQuad(quad: TwoDMockupQuad): TwoDMockupQuad {
+  return {
+    printAreaId: quad.printAreaId,
+    points: quad.points,
+    sortOrder: quad.sortOrder,
+    name: quad.name,
+  }
+}
+
+function publicMockup(mockup: TwoDMockup): TwoDMockup {
+  return {
+    mockupId: mockup.mockupId,
+    name: mockup.name,
+    status: mockup.status,
+    customizable: mockup.customizable,
+    thumbnailUrl: mockup.thumbnailUrl,
+    watermarkedSourceUrl: mockup.watermarkedSourceUrl,
+    sourceWidth: mockup.sourceWidth,
+    sourceHeight: mockup.sourceHeight,
+    quads: mockup.quads?.map(publicQuad),
+    printAreas: mockup.printAreas?.map(publicQuad),
+    version: mockup.version,
+    createdAt: mockup.createdAt,
+    updatedAt: mockup.updatedAt,
+  }
+}
+
+function publicMockupDetails(mockup: TwoDMockupDetails): TwoDMockupDetails {
+  return {
+    ...publicMockup(mockup),
+    quads: mockup.quads.map(publicQuad),
+    surfaces: mockup.surfaces.map((surface) => ({
+      surfaceUuid: surface.surfaceUuid,
+      coverage: 'full',
+    })),
+  }
+}
 
 /**
  * SudoAI 2D mockups (`client.ai`).
@@ -102,7 +141,7 @@ export class AIResource {
       return toJob(data)
     }
 
-    return data as TwoDMockupDetails
+    return publicMockupDetails(data as TwoDMockupDetails)
   }
 
   /**
@@ -150,8 +189,9 @@ export class AIResource {
    * Render artwork (or a color) onto an existing 2D mockup.
    *
    * Targets `POST /api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id
-   * lives in the path). Each print area must supply `artworkUrl` OR `color`.
-   * Costs 5 credits.
+   * lives in the path). Target a saved print area with `uuid`, or a
+   * full-coverage product surface with `surfaceUuid`. Each target must supply `artworkUrl` OR
+   * `color`. Costs 5 credits.
    *
    * By default this blocks until the render finishes and resolves with an
    * {@link AIRenderResult} (the rendered `printFiles` plus a `renderUuid` you
@@ -187,8 +227,38 @@ export class AIResource {
   render(params: AIRenderParams & { isAsync: true }): Promise<Job>
   render(params: AIRenderParams): Promise<AIRenderResult>
   async render(params: AIRenderParams): Promise<AIRenderResult | Job> {
+    const printAreas = params.printAreas.map((target) => ({
+      ...('uuid' in target && target.uuid
+        ? { uuid: target.uuid }
+        : { surfaceUuid: target.surfaceUuid }),
+      artworkUrl: target.artworkUrl,
+      base64: target.base64,
+      color: target.color,
+      adjustments: target.adjustments
+        ? {
+            brightness: target.adjustments.brightness,
+            contrast: target.adjustments.contrast,
+            opacity: target.adjustments.opacity,
+            saturation: target.adjustments.saturation,
+            vibrance: target.adjustments.vibrance,
+            blur: target.adjustments.blur,
+          }
+        : undefined,
+      placement: target.placement
+        ? {
+            position: target.placement.position,
+            coverage: target.placement.coverage,
+            fit: target.placement.fit,
+            scale: target.placement.scale,
+            rotation: target.placement.rotation,
+            offsetX: target.placement.offsetX,
+            offsetY: target.placement.offsetY,
+          }
+        : undefined,
+      removeBackground: target.removeBackground,
+    }))
     const body: Record<string, unknown> = {
-      printAreas: params.printAreas,
+      printAreas,
       exportOptions: params.exportOptions,
     }
     // Only send is_async when explicitly opting into the async job flow; the
@@ -214,9 +284,13 @@ export class AIResource {
     }
 
     const result = data as AIRenderResult
-    // Add convenience `url` getter
     return {
-      ...result,
+      printFiles: result.printFiles.map((file) => ({
+        exportPath: file.exportPath,
+        durationMs: file.durationMs,
+        exportFormat: file.exportFormat,
+      })),
+      renderUuid: result.renderUuid,
       url: result.printFiles[0]?.exportPath ?? '',
     }
   }
@@ -249,12 +323,13 @@ export class AIResource {
       query: {
         limit: params.limit,
         offset: params.offset,
+        customizable_only: params.customizableOnly ? 'true' : undefined,
       },
       rawEnvelope: true,
     })
 
     return {
-      mockups: body.data ?? [],
+      mockups: (body.data ?? []).map(publicMockup),
       total: body.total ?? 0,
       limit: body.limit ?? params.limit ?? 20,
       offset: body.offset ?? params.offset ?? 0,
@@ -265,29 +340,35 @@ export class AIResource {
    * Get a single 2D mockup by id.
    */
   async get(mockupId: string): Promise<TwoDMockupDetails> {
-    return this.client.request<TwoDMockupDetails>({
+    const mockup = await this.client.request<TwoDMockupDetails>({
       method: 'GET',
       path: `/api/v1/sudoai/2d-mockups/${mockupId}`,
     })
+    return publicMockupDetails(mockup)
   }
 
   /**
-   * Replace all print areas on a 2D mockup with 1 to 8 four-point quads. Each
-   * quad may carry an optional `name`.
+   * Replace all print areas on a 2D mockup with up to 8 four-point quads. An
+   * empty array is accepted only when the API has verified every product
+   * surface as full coverage. Each quad may carry an optional `name`.
    */
   async updatePrintAreas(
     mockupId: string,
     printAreas: readonly TwoDPrintAreaInput[],
   ): Promise<Update2DPrintAreasResult> {
-    if (printAreas.length === 0 || printAreas.length > 8) {
-      throw new ValidationError('Provide between 1 and 8 print areas')
+    if (printAreas.length > 8) {
+      throw new ValidationError('Provide at most 8 print areas')
     }
 
-    return this.client.request<Update2DPrintAreasResult>({
+    const result = await this.client.request<Update2DPrintAreasResult>({
       method: 'PUT',
       path: `/api/v1/sudoai/2d-mockups/${mockupId}/print-areas`,
       body: { printAreas },
     })
+    return {
+      mockupId: result.mockupId,
+      printAreas: result.printAreas.map(publicQuad),
+    }
   }
 
   /**

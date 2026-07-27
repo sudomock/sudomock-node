@@ -113,7 +113,7 @@ describe('renders.createVideo()', () => {
     expect(job.outcomeTier).toBe('premium')
   })
 
-  it('sends video options in snake_case', async () => {
+  it('sends only public video options in snake_case', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders/video`, async ({ request }) => {
@@ -125,14 +125,14 @@ describe('renders.createVideo()', () => {
     const client = createClient()
     await client.renders.createVideo({
       mockupId: 'mock-uuid',
-      video: { durationSeconds: 8, audio: true, advancedModel: 'veo-3.1-fast' },
+      video: { durationSeconds: 8, audio: true },
     })
 
     expect(capturedBody['mockup_uuid']).toBe('mock-uuid')
     const video = capturedBody['video'] as Record<string, unknown>
     expect(video['duration_seconds']).toBe(8)
     expect(video['audio']).toBe(true)
-    expect(video['advanced_model']).toBe('veo-3.1-fast')
+    expect(Object.keys(video)).toEqual(['duration_seconds', 'audio'])
   })
 })
 
@@ -153,6 +153,28 @@ describe('jobs.retrieve()', () => {
     expect(job.mockupUuid).toBeNull()
     expect(job.creditsCharged).toBe(1)
     expect(job.payg).toBeNull()
+    expect(job).not.toHaveProperty('model')
+  })
+
+  it('drops engine diagnostics from job outcomes', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () =>
+        HttpResponse.json({
+          ...MOCK_JOB_SUCCEEDED_RESPONSE,
+          data: {
+            ...MOCK_JOB_SUCCEEDED_RESPONSE.data,
+            model: 'private-engine',
+            prompt: 'private instruction',
+            mask_uuid: 'private-surface',
+          },
+        }),
+      ),
+    )
+
+    const job = await createClient().jobs.retrieve(ASYNC_UUID)
+    expect(job).not.toHaveProperty('model')
+    expect(job).not.toHaveProperty('prompt')
+    expect(job).not.toHaveProperty('maskUuid')
   })
 
   it('surfaces the nested PAYG cost breakdown', async () => {
@@ -293,7 +315,9 @@ describe('jobs.waitForJob()', () => {
     const client = createClient()
     const job = await client.jobs.waitForJob(ASYNC_UUID, { intervalMs: 5 })
     expect(job.status).toBe('failed')
-    expect(job.error).toBe('render engine error')
+    expect(job.error).toBe(
+      'Processing failed. Retry or contact support with the job ID.',
+    )
   })
 
   it('throws TimeoutError when the job never finishes', async () => {

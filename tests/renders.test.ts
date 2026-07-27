@@ -4,6 +4,7 @@ import SudoMock, {
   JobFailedError,
   TimeoutError,
   ValidationError,
+  type StudioResultEvent,
   type TwoDPrintAreaInput,
 } from '../src/index'
 import { CreditError } from '../src/errors'
@@ -123,7 +124,7 @@ describe('renders.create()', () => {
     expect(Object.keys(asset)).not.toContain('removeBackground')
   })
 
-  it('sends text-only personalization and returns text details and warnings', async () => {
+  it('sends text-only personalization and returns warnings without diagnostics', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
@@ -142,7 +143,13 @@ describe('renders.create()', () => {
               segments: null,
             }],
           },
-          warnings: [{ code: 'TEXT_FIT_SHRUNK', message: 'Text was resized to fit.' }],
+          warnings: [
+            { code: 'TEXT_FIT_SHRUNK', message: 'Text was resized to fit.' },
+            {
+              code: 'MODEL_PROMPT_FALLBACK',
+              message: 'Private model prompt failed for mask_uuid.',
+            },
+          ],
         })
       }),
     )
@@ -186,8 +193,12 @@ describe('renders.create()', () => {
       ],
       export_options: { image_format: 'webp', image_size: 2048 },
     })
-    expect(result.textLayers?.[0]?.resolvedFont?.postscriptName).toBe('Montserrat-Bold')
+    expect(result).not.toHaveProperty('textLayers')
     expect(result.warnings?.[0]?.code).toBe('TEXT_FIT_SHRUNK')
+    expect(result.warnings?.[1]).toEqual({
+      code: 'PROCESSING_FAILED',
+      message: 'The request completed with an advisory.',
+    })
   })
 
   it('surfaces backend error codes', async () => {
@@ -253,6 +264,9 @@ describe('ai.render() — 2D mockup', () => {
     expect(result.renderUuid).toBe('dddddddd-dddd-dddd-dddd-dddddddddddd')
     expect(result.printFiles[0]!.durationMs).toBe(2340)
     expect(result.printFiles[0]!.exportFormat).toBe('png')
+    expect(result).not.toHaveProperty('maskUuid')
+    expect(result).not.toHaveProperty('model')
+    expect(result.printFiles[0]).not.toHaveProperty('privateStorageKey')
   })
 
   it('posts the 2D render body in snake_case to /sudoai/2d-mockups/{id}/render (id in path, not body)', async () => {
@@ -326,6 +340,34 @@ describe('ai.render() — 2D mockup', () => {
     const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
     expect(printAreas[0]!['remove_background']).toBe(true)
     expect(Object.keys(printAreas[0]!)).not.toContain('removeBackground')
+  })
+
+  it('addresses a full-coverage product surface by surface_uuid', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
+        },
+      ),
+    )
+
+    await createClient().ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [{
+        surfaceUuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        color: '#FF0000',
+      }],
+    })
+
+    const [surface] = capturedBody['print_areas'] as Record<string, unknown>[]
+    expect(surface).toMatchObject({
+      surface_uuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      color: '#FF0000',
+    })
+    expect(surface!['uuid']).toBeUndefined()
   })
 
   it('returns a Job (202) and sends is_async when isAsync: true', async () => {
@@ -452,6 +494,9 @@ describe('ai.create() and waitForReady()', () => {
       MOCK_2D_MOCKUP.quads[0]!.print_area_id,
     )
     expect(mockup.quads[0]?.name).toBe('Front')
+    expect(mockup).not.toHaveProperty('maskUrl')
+    expect(mockup).not.toHaveProperty('regionIndex')
+    expect(mockup).not.toHaveProperty('displacementGrid')
     expect('jobId' in mockup).toBe(false)
   })
 
@@ -702,15 +747,31 @@ describe('ai.updatePrintAreas()', () => {
     expect(result.printAreas[0]?.sortOrder).toBe(0)
   })
 
-  it('rejects fewer than 1 or more than 8 print areas', async () => {
+  it('forwards an empty full-surface representation and rejects more than 8 areas', async () => {
     const client = createClient()
     const printArea: TwoDPrintAreaInput = {
       points: [[10, 20], [110, 20], [110, 120], [10, 120]],
     }
 
-    await expect(
-      client.ai.updatePrintAreas(MOCK_2D_MOCKUP.mockup_id, []),
-    ).rejects.toThrow(ValidationError)
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.put(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/print-areas`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            success: true,
+            data: {
+              mockup_id: MOCK_2D_MOCKUP.mockup_id,
+              print_areas: [],
+            },
+          })
+        },
+      ),
+    )
+
+    await client.ai.updatePrintAreas(MOCK_2D_MOCKUP.mockup_id, [])
+    expect(capturedBody).toEqual({ print_areas: [] })
     await expect(
       client.ai.updatePrintAreas(
         MOCK_2D_MOCKUP.mockup_id,
@@ -722,20 +783,24 @@ describe('ai.updatePrintAreas()', () => {
 
 describe('ai 2D-mockup catalog', () => {
   it('lists 2D mockups', async () => {
+    let customizableOnly: string | null = null
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, ({ request }) => {
+        customizableOnly = new URL(request.url).searchParams.get('customizable_only')
+        return (
         HttpResponse.json({
           success: true,
-          data: [MOCK_2D_MOCKUP],
+          data: [{ ...MOCK_2D_MOCKUP, customizable: true }],
           total: 1,
           limit: 20,
           offset: 0,
-        }),
-      ),
+        })
+        )
+      }),
     )
 
     const client = createClient()
-    const page = await client.ai.list({ limit: 20 })
+    const page = await client.ai.list({ limit: 20, customizableOnly: true })
     // Pagination metadata (total/limit/offset) is surfaced alongside the page.
     expect(page.total).toBe(1)
     expect(page.limit).toBe(20)
@@ -745,22 +810,45 @@ describe('ai 2D-mockup catalog', () => {
       '99999999-9999-9999-9999-999999999999',
     )
     expect(page.mockups[0]!.sourceWidth).toBe(2000)
+    expect(page.mockups[0]!.customizable).toBe(true)
+    expect(page.mockups[0]).not.toHaveProperty('maskUrl')
+    expect(page.mockups[0]).not.toHaveProperty('regionIndex')
+    expect(page.mockups[0]).not.toHaveProperty('displacementGrid')
+    expect(customizableOnly).toBe('true')
   })
 
   it('gets a single 2D mockup', async () => {
     server.use(
       http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, () =>
-        HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
+        HttpResponse.json({
+          success: true,
+          data: {
+            ...MOCK_2D_MOCKUP,
+            customizable: true,
+            surfaces: [{
+              surface_uuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+              coverage: 'full',
+            }],
+          },
+        }),
       ),
     )
 
     const client = createClient()
     const mockup = await client.ai.get('99999999-9999-9999-9999-999999999999')
     expect(mockup.name).toBe('2D Tee')
+    expect(mockup.customizable).toBe(true)
     expect(mockup.quads?.[0]!.printAreaId).toBe(
       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     )
     expect(mockup.quads?.[0]!.name).toBe('Front')
+    expect(mockup.surfaces[0]).toEqual({
+      surfaceUuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      coverage: 'full',
+    })
+    expect(mockup).not.toHaveProperty('maskUrl')
+    expect(mockup).not.toHaveProperty('regionIndex')
+    expect(mockup).not.toHaveProperty('displacementGrid')
   })
 
   it('deletes a 2D mockup', async () => {
@@ -807,7 +895,7 @@ describe('renders.createVideo() — raw-image mode', () => {
     expect(webhook['url']).toBe('https://example.com/hooks')
   })
 
-  it('defaults durationSeconds to 5 and forwards arbitrary webhook fields', async () => {
+  it('defaults durationSeconds to 4 and sends only the webhook URL', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders/video`, async ({ request }) => {
@@ -819,17 +907,15 @@ describe('renders.createVideo() — raw-image mode', () => {
     const client = createClient()
     await client.renders.createVideo({
       imageUrl: 'https://example.com/art.png',
-      // durationSeconds intentionally omitted -> should default to 5.
+      // durationSeconds intentionally omitted -> should use the auto-route default.
       video: { audio: true },
-      // BE accepts an arbitrary webhook dict; extra keys must pass through.
-      webhook: { url: 'https://example.com/hooks', secretHeader: 'x-token' },
+      webhook: { url: 'https://example.com/hooks' },
     })
 
     const video = capturedBody['video'] as Record<string, unknown>
-    expect(video['duration_seconds']).toBe(5)
+    expect(video['duration_seconds']).toBe(4)
     const webhook = capturedBody['webhook'] as Record<string, unknown>
-    expect(webhook['url']).toBe('https://example.com/hooks')
-    expect(webhook['secret_header']).toBe('x-token')
+    expect(webhook).toEqual({ url: 'https://example.com/hooks' })
   })
 })
 
@@ -846,6 +932,9 @@ describe('uploads.create()', () => {
     expect(result.smartObjects).toHaveLength(1)
     expect(result.textLayers[0]!.name).toBe('Customer Name')
     expect(result.warnings?.[0]?.code).toBe('PSD_HIDDEN_SMART_OBJECTS')
+    expect(result).not.toHaveProperty('model')
+    expect(result).not.toHaveProperty('prompt')
+    expect(result.smartObjects[0]).not.toHaveProperty('maskUuid')
   })
 
   it('sends upload params in snake_case', async () => {
@@ -891,19 +980,205 @@ describe('account.get()', () => {
     expect(result.subscription.plan).toBe('pro')
     expect(result.usage.creditsRemaining).toBe(950)
     expect(result.apiKey.totalRequests).toBe(1234)
+    expect(result.account).not.toHaveProperty('privateState')
   })
 })
 
 describe('studio.createSession()', () => {
+  it('types a 2D browser result as the exact outcome-only wire payload', () => {
+    const event: StudioResultEvent = {
+      version: 1,
+      source: 'sudomock-studio',
+      type: 'studio.mockup-saved',
+      request_id: '11111111-1111-4111-8111-111111111111',
+      message_session_id: '22222222-2222-4222-8222-222222222222',
+      payload: {
+        mockup_uuid: '33333333-3333-4333-8333-333333333333',
+        render_uuid: '44444444-4444-4444-8444-444444444444',
+        action_id: 'save-mockup',
+      },
+    }
+
+    expect(event.payload.action_id).toBe('save-mockup')
+  })
+
+  it('types a PSD browser result with the same opaque render handle', () => {
+    const event: StudioResultEvent = {
+      version: 1,
+      source: 'sudomock-studio',
+      type: 'studio.design-submitted',
+      request_id: '11111111-1111-4111-8111-111111111111',
+      message_session_id: '22222222-2222-4222-8222-222222222222',
+      payload: {
+        mockup_uuid: '33333333-3333-4333-8333-333333333333',
+        render_uuid: '44444444-4444-4444-8444-444444444444',
+        action_id: 'add-to-cart',
+      },
+    }
+
+    expect(event.payload.action_id).toBe('add-to-cart')
+  })
+
+  it('consumes the browser result with server-owned action context', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/studio/actions/consume`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            success: true,
+            replayed: false,
+            receipt: {
+              version: 1,
+              request_id: '11111111-1111-4111-8111-111111111111',
+              message_session_id: '22222222-2222-4222-8222-222222222222',
+              type: 'studio.design-submitted',
+              mockup_type: '2d',
+              session_kind: 'customize',
+              action_id: 'add-to-cart',
+              action_context: {
+                shop: 'shop.example',
+                product_id: 'product-1',
+                variant_id: 'variant-2',
+              },
+              mockup_uuid: '33333333-3333-4333-8333-333333333333',
+              render_uuid: '44444444-4444-4444-8444-444444444444',
+            },
+          })
+        },
+      ),
+    )
+    const event: StudioResultEvent = {
+      version: 1,
+      source: 'sudomock-studio',
+      type: 'studio.design-submitted',
+      request_id: '11111111-1111-4111-8111-111111111111',
+      message_session_id: '22222222-2222-4222-8222-222222222222',
+      payload: {
+        mockup_uuid: '33333333-3333-4333-8333-333333333333',
+        render_uuid: '44444444-4444-4444-8444-444444444444',
+        action_id: 'add-to-cart',
+      },
+    }
+
+    const result = await createClient().studio.consumeAction(event, {
+      shop: 'shop.example',
+      productId: 'product-1',
+      variantId: 'variant-2',
+    })
+
+    expect(result).toEqual({
+      success: true,
+      replayed: false,
+      receipt: {
+        version: 1,
+        requestId: event.request_id,
+        messageSessionId: event.message_session_id,
+        type: event.type,
+        mockupType: '2d',
+        sessionKind: 'customize',
+        actionId: 'add-to-cart',
+        actionContext: {
+          shop: 'shop.example',
+          productId: 'product-1',
+          variantId: 'variant-2',
+        },
+        mockupUuid: event.payload.mockup_uuid,
+        renderUuid: event.payload.render_uuid,
+      },
+    })
+    expect(capturedBody).toEqual({
+      version: 1,
+      request_id: event.request_id,
+      message_session_id: event.message_session_id,
+      type: event.type,
+      payload: {
+        ...event.payload,
+        action_context: {
+          shop: 'shop.example',
+          product_id: 'product-1',
+          variant_id: 'variant-2',
+        },
+      },
+    })
+    expect(JSON.stringify(capturedBody)).not.toContain('sudomock-studio')
+  })
+
+  it('consumes a PSD result with the same outcome-only payload', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    const event: StudioResultEvent = {
+      version: 1,
+      source: 'sudomock-studio',
+      type: 'studio.design-submitted',
+      request_id: '11111111-1111-4111-8111-111111111111',
+      message_session_id: '22222222-2222-4222-8222-222222222222',
+      payload: {
+        mockup_uuid: '33333333-3333-4333-8333-333333333333',
+        render_uuid: '44444444-4444-4444-8444-444444444444',
+        action_id: 'add-to-cart',
+      },
+    }
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/studio/actions/consume`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            success: true,
+            replayed: false,
+            receipt: {
+              version: 1,
+              request_id: event.request_id,
+              message_session_id: event.message_session_id,
+              type: event.type,
+              mockup_type: 'psd',
+              session_kind: 'customize',
+              action_id: 'add-to-cart',
+              action_context: {
+                product_id: 'product-1',
+                variant_id: 'variant-2',
+              },
+              mockup_uuid: event.payload.mockup_uuid,
+              render_uuid: event.payload.render_uuid,
+            },
+          })
+        },
+      ),
+    )
+
+    await createClient().studio.consumeAction(event, {
+      productId: 'product-1',
+      variantId: 'variant-2',
+    })
+
+    const payload = capturedBody['payload'] as Record<string, unknown>
+    expect(Object.keys(payload).sort()).toEqual([
+      'action_context',
+      'action_id',
+      'mockup_uuid',
+      'render_uuid',
+    ])
+    expect(payload['action_context']).toEqual({
+      product_id: 'product-1',
+      variant_id: 'variant-2',
+    })
+  })
+
   it('creates a session and returns token', async () => {
     const client = createClient()
     const result = await client.studio.createSession({
       mockupUuid: '11111111-1111-1111-1111-111111111111',
+      allowedOrigin: 'https://shop.example',
     })
 
     expect(result.session).toContain('sess_')
     expect(result.expiresIn).toBe(900)
-    expect(result.displayMode).toBe('iframe')
+    expect(result.mockupType).toBe('psd')
+    expect(result.messageSessionId).toBe(
+      '22222222-2222-4222-8222-222222222222',
+    )
+    expect(result.bootstrapSecret).toBeTruthy()
   })
 
   it('sends session params in snake_case', async () => {
@@ -915,9 +1190,11 @@ describe('studio.createSession()', () => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json({
             success: true,
+            mockup_type: '2d',
             session: 'sess_xyz',
             expires_in: 900,
-            displayMode: 'popup',
+            message_session_id: '22222222-2222-4222-8222-222222222222',
+            bootstrap_secret: 'abcdefghijklmnopqrstuvwxyz1234567890ABCDEFG',
           })
         },
       ),
@@ -926,12 +1203,31 @@ describe('studio.createSession()', () => {
     const client = createClient()
     await client.studio.createSession({
       mockupUuid: 'mock-uuid',
+      mockupType: '2d',
+      sessionKind: 'customize',
+      allowedOrigin: 'https://shop.example',
       productId: 'prod-123',
-      shop: 'example.myshopify.com',
+      variantId: 'variant-456',
+      actionId: 'add-to-cart',
+      ui: {
+        primaryActionLabel: 'Add to cart',
+        secondaryActionLabel: 'Preview',
+        accentColor: '#3366FF',
+      },
     })
 
     expect(capturedBody['mockup_uuid']).toBe('mock-uuid')
+    expect(capturedBody['mockup_type']).toBe('2d')
+    expect(capturedBody['session_kind']).toBe('customize')
+    expect(capturedBody['allowed_origin']).toBe('https://shop.example')
     expect(capturedBody['product_id']).toBe('prod-123')
-    expect(capturedBody['shop']).toBe('example.myshopify.com')
+    expect(capturedBody['variant_id']).toBe('variant-456')
+    expect(capturedBody['shop']).toBeUndefined()
+    expect(capturedBody['action_id']).toBe('add-to-cart')
+    expect(capturedBody['ui']).toEqual({
+      primary_action_label: 'Add to cart',
+      secondary_action_label: 'Preview',
+      accent_color: '#3366FF',
+    })
   })
 })

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import SudoMock from '../src/index'
-import { NotFoundError, ValidationError } from '../src/errors'
+import { NotFoundError } from '../src/errors'
 import { TEST_API_KEY, TEST_BASE_URL, server, MOCK_MOCKUP } from './setup'
 
 function createClient() {
@@ -31,6 +31,10 @@ describe('mockups.list()', () => {
     expect(mockup.smartObjects[0]!.blendMode).toBe('normal')
     expect(mockup.textLayers[0]!.fontPostscriptName).toBe('Montserrat-Bold')
     expect(mockup.textLayers[0]!.isEditable).toBe(true)
+    expect(mockup).not.toHaveProperty('model')
+    expect(mockup).not.toHaveProperty('prompt')
+    expect(mockup.smartObjects[0]).not.toHaveProperty('maskUuid')
+    expect(mockup.textLayers[0]).not.toHaveProperty('resolvedFont')
   })
 
   it('passes query params correctly', async () => {
@@ -72,6 +76,7 @@ describe('mockups.get()', () => {
     expect(mockup.width).toBe(4000)
     expect(mockup.height).toBe(3000)
     expect(mockup.thumbnails).toHaveLength(1)
+    expect(mockup).not.toHaveProperty('model')
   })
 
   it('throws NotFoundError for missing mockup', async () => {

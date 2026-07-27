@@ -181,15 +181,15 @@ if (nextCursor) {
 ### Video Renders
 
 `renders.createVideo` animates a mockup. It is always asynchronous and returns a
-`Job` of kind `'video'`. Credit cost scales with model, duration, and audio; the
-free tier allows a single lifetime video. `durationSeconds` must be one of the
-durations the chosen model supports (otherwise the API returns a 400).
+`Job` of kind `'video'`. Credit cost scales with duration, audio, and the
+automatically selected quality tier; the free tier allows a single lifetime
+video. Unsupported `durationSeconds` values return a 400.
 
 ```typescript
 const job = await client.renders.createVideo({
   mockupId: 'mockup-uuid',
   smartObjects: [{ uuid: 'so-uuid', asset: { url: 'https://example.com/art.png' } }],
-  video: { durationSeconds: 5, audio: false },
+  video: { durationSeconds: 4, audio: false },
 })
 const done = await client.jobs.waitForJob(job.jobId)
 console.log(done.resultUrl) // mp4 URL
@@ -202,7 +202,7 @@ attach a per-call webhook:
 ```typescript
 const job = await client.renders.createVideo({
   imageUrl: 'https://example.com/art.png', // raw-image mode
-  video: { durationSeconds: 5, motion: 'showcase' },
+  video: { durationSeconds: 4, motion: 'showcase' },
   webhook: { url: 'https://example.com/hooks/sudomock' },
 })
 ```
@@ -213,7 +213,8 @@ Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
 mockup catalog. `client.ai.render` posts to
 `/api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id lives in the path)
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
-`color`.
+`color`. Use `uuid` for a saved print area or `surfaceUuid` for a full-coverage
+surface returned by `client.ai.get()`.
 
 #### Render an existing 2D mockup
 
@@ -279,6 +280,17 @@ const result = await client.ai.render({
   }],
 })
 console.log(result.url)
+
+const fullSurface = mockup.surfaces[0]
+if (fullSurface) {
+  await client.ai.render({
+    mockupId: mockup.mockupId,
+    printAreas: [{
+      surfaceUuid: fullSurface.surfaceUuid,
+      artworkUrl: 'https://example.com/design.png',
+    }],
+  })
+}
 ```
 
 Prefer to create in the background? Pass `isAsync: true` and `create()` resolves
@@ -292,8 +304,9 @@ const job = await client.ai.create({
 const mockup = await client.ai.waitForReady(job, { intervalMs: 2_000 })
 ```
 
-Update all print areas on a ready mockup with 1 to 8 four-point quads (each with
-an optional `name`, **0 credits**):
+Update all print areas on a ready mockup with up to 8 four-point quads (each
+with an optional `name`, **0 credits**). An empty array is accepted only when
+the API has verified every product surface as full coverage:
 
 ```typescript
 const updated = await client.ai.updatePrintAreas('mockup-uuid', [{
@@ -306,7 +319,11 @@ console.log(updated.printAreas)
 Manage the 2D-mockup catalog:
 
 ```typescript
-const { mockups, total } = await client.ai.list({ limit: 50 })
+const { mockups, total } = await client.ai.list({
+  limit: 50,
+  customizableOnly: true,
+})
+console.log(mockups[0]?.customizable)
 const mockup = await client.ai.get('mockup-uuid')
 await client.ai.delete('mockup-uuid')
 ```
@@ -405,17 +422,49 @@ Create customization sessions for the Studio iframe (print-on-demand integration
 
 ```typescript
 const session = await client.studio.createSession({
+  mockupType: '2d',
+  sessionKind: 'customize',
   mockupUuid: 'uuid',
-  productId: 'shopify-product-123',  // optional
-  shop: 'store.myshopify.com',       // optional
+  allowedOrigin: 'https://store.example.com',
+  productId: 'product-123',          // optional
+  variantId: 'variant-456',          // optional
+  actionId: 'add-to-cart',           // optional
+  ui: {
+    primaryActionLabel: 'Add to cart',
+    secondaryActionLabel: 'Preview',
+    accentColor: '#3366FF',
+  },
 })
 
 // Open Studio iframe:
 // studio.sudomock.com/editor?session=<session.session>
 console.log(session.session)    // 'sess_xxx...'
 console.log(session.expiresIn)  // 900 (seconds)
-console.log(session.displayMode) // 'iframe' | 'popup' | 'page'
+console.log(session.messageSessionId)
+console.log(session.bootstrapSecret) // keep secret; never put it in the iframe URL
 ```
+
+Use `sessionKind: 'setup'` to create or edit a 2D mockup with setup controls.
+Use `customize` for a shopper working on a prepared mockup. Setup emits
+`studio.mockup-saved`; customize emits
+`studio.design-submitted`. The browser message is a wire payload, so its stable
+fields remain snake case. Every result has `mockup_uuid`, `render_uuid`, and the
+optional `action_id`. Treat `render_uuid` as the opaque confirmation handle;
+the parent page does not receive editor revision state.
+
+On your server, confirm that browser message before saving the mockup or adding
+anything to a cart:
+
+```typescript
+const receipt = await client.studio.consumeAction(event, {
+  productId: 'product-123',
+  variantId: 'variant-456',
+})
+```
+
+The `productId` and `variantId` must exactly match the values used to create the
+session. The typed receipt is bound to the session, render, API key owner, and
+commerce context, and can be consumed only once.
 
 ### Webhooks
 

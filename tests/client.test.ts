@@ -62,6 +62,26 @@ describe('authentication', () => {
     const client = new SudoMock('sm_bad_key', { baseUrl: TEST_BASE_URL })
     await expect(client.mockups.list()).rejects.toThrow(AuthenticationError)
   })
+
+  it('does not expose engine diagnostics from API errors', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/mockups`, () =>
+        HttpResponse.json(
+          {
+            detail: 'Private model prompt failed for mask_uuid.',
+            error_code: 'MODEL_PROMPT_FAILED',
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    const error = await createClient().mockups.list().catch((caught: unknown) => caught)
+    expect(error).toMatchObject({
+      message: 'The request could not be completed.',
+      code: 'PROCESSING_FAILED',
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

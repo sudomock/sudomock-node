@@ -323,29 +323,6 @@ export interface PrintFile {
   renderUuid?: string
 }
 
-export interface ResolvedFontInfo {
-  family: string | null
-  postscriptName: string | null
-}
-
-export interface TextSegmentRenderInfo {
-  index: number
-  requestedFont: string | null
-  resolvedFont: ResolvedFontInfo | null
-  matchSource: string
-  glyphCoverageOk: boolean
-}
-
-export interface TextLayerRenderInfo {
-  uuid: string
-  name: string | null
-  requestedFont: string | null
-  resolvedFont: ResolvedFontInfo | null
-  matchSource: string
-  glyphCoverageOk: boolean
-  segments: TextSegmentRenderInfo[] | null
-}
-
 export interface RenderResult {
   printFiles: PrintFile[]
   /**
@@ -355,8 +332,6 @@ export interface RenderResult {
    * is `GET /jobs/{jobId}`, keyed by {@link Job.jobId}.
    */
   renderUuid?: string
-  /** Font details for each requested text layer */
-  textLayers?: TextLayerRenderInfo[] | null
   /** Non-fatal advisories for this render */
   warnings?: ApiWarning[]
   /** Convenience accessor: URL of the first rendered file */
@@ -381,28 +356,6 @@ export interface AIAdjustments {
   vibrance?: number
   /** Gaussian blur. */
   blur?: number
-  /** Blend mode for the overlay. */
-  blendMode?: string
-  /** Warp strength for perspective fitting. */
-  warpStrength?: number
-  /** Expand the print area edges. */
-  edgeExpand?: number
-  /** Texture preservation strength. */
-  textureStrength?: number
-}
-
-/**
- * Pixel offset of the artwork from its calculated position in a 2D print area.
- *
- * Sent as the API's `offset_x` / `offset_y` fields (`offset_x = left`,
- * `offset_y = top`). Sending `{ x, y }` here would be dropped, leaving the
- * offset at 0.
- */
-export interface AIPlacementOffset {
-  /** Vertical offset in pixels (Y axis) -> backend `offset_y`. */
-  top?: number
-  /** Horizontal offset in pixels (X axis) -> backend `offset_x`. */
-  left?: number
 }
 
 /** Placement of the artwork within a print area. */
@@ -410,27 +363,18 @@ export interface AIPlacement {
   position?: string
   coverage?: number
   fit?: string
-  /**
-   * Scale multiplier applied to the artwork (0.01-10). OVERRIDES `coverage` +
-   * `fit` sizing. Prefer this over the deprecated `size` field.
-   */
+  /** Scale multiplier applied to the artwork (0.01-10). */
   scale?: number
-  /**
-   * Rotation in degrees, clockwise positive (-360 to 360). Prefer this over the
-   * deprecated `rotate` field.
-   */
+  /** Rotation in degrees, clockwise positive (-360 to 360). */
   rotation?: number
-  /** @deprecated Use {@link AIPlacement.rotation}. Legacy rotation in degrees. */
-  rotate?: number
-  /** @deprecated Use {@link AIPlacement.scale}. Legacy explicit size in pixels. */
-  size?: AssetSize
-  offset?: AIPlacementOffset
+  /** Horizontal offset in pixels. */
+  offsetX?: number
+  /** Vertical offset in pixels. */
+  offsetY?: number
 }
 
-/** A single print area to render artwork (or a color) into. */
-export interface AIPrintArea {
-  /** Print-area UUID. */
-  uuid: string
+/** Artwork or color placed on one saved print area or full product surface. */
+export type AIPrintArea = {
   /** URL of the artwork to place. Supply `base64`, `artworkUrl`, OR `color`. */
   artworkUrl?: string
   /** Raw base64-encoded artwork bytes (no data: prefix). Supply `base64`, `artworkUrl`, OR `color`. */
@@ -449,7 +393,18 @@ export interface AIPrintArea {
    * reused across several print areas is charged once). Default: `false`.
    */
   removeBackground?: boolean
-}
+} & (
+  | {
+      /** UUID of a saved print area. */
+      uuid: string
+      surfaceUuid?: never
+    }
+  | {
+      /** UUID of a full-coverage product surface. */
+      surfaceUuid: string
+      uuid?: never
+    }
+)
 
 export interface AIRenderParams {
   /** UUID of the existing 2D mockup to render artwork onto. */
@@ -500,7 +455,7 @@ export type Create2DMockupParams = {
   idempotencyKey?: string
   /**
    * Optional seed print areas (4-point quads, each with an optional `name`).
-   * When omitted the backend auto-detects the print area(s).
+   * When omitted SudoMock detects the print area(s) automatically.
    */
   printAreas?: readonly TwoDPrintAreaInput[]
   /**
@@ -554,6 +509,12 @@ export interface TwoDMockupQuad {
   name?: string
 }
 
+/** A full product surface that is addressed directly during render. */
+export interface TwoDFullSurface {
+  surfaceUuid: string
+  coverage: 'full'
+}
+
 /** Replacement geometry for one 2D print area. */
 export interface TwoDPrintAreaInput {
   points: TwoDQuadPoints
@@ -572,6 +533,8 @@ export interface TwoDMockup {
   mockupId: string
   name: string
   status: string
+  /** Whether this mockup is ready for a shopper customization session. */
+  customizable: boolean
   thumbnailUrl: string | null
   watermarkedSourceUrl: string | null
   sourceWidth: number | null
@@ -588,6 +551,8 @@ export interface TwoDMockup {
 /** Full 2D mockup returned by `client.ai.get()` and `waitForReady()`. */
 export interface TwoDMockupDetails extends TwoDMockup {
   quads: TwoDMockupQuad[]
+  /** Full-coverage product surfaces available as render targets. */
+  surfaces: TwoDFullSurface[]
 }
 
 /** Pagination params for `client.ai.list()`. */
@@ -596,12 +561,14 @@ export interface List2dMockupsParams {
   limit?: number
   /** Number of mockups to skip (default: 0). */
   offset?: number
+  /** Return only mockups ready for shopper customization. */
+  customizableOnly?: boolean
 }
 
 /**
  * An offset-paginated page of 2D mockups (`client.ai.list()`).
  *
- * The backend returns the pagination metadata (`total` / `limit` / `offset`)
+ * The API returns the pagination metadata (`total` / `limit` / `offset`)
  * as siblings of the `data` array; this surfaces it so callers can drive
  * "load more" without guessing whether another page exists.
  */
@@ -727,8 +694,6 @@ export interface Job {
    * 202 submit response, not on the `GET /jobs` poll.
    */
   statusUrl?: string
-  /** Model used (e.g. for video renders). */
-  model?: string | null
   /** Output URL once `status === 'succeeded'`. */
   resultUrl?: string | null
   /** UUID produced by an upload or 2D-creation job. */
@@ -754,11 +719,7 @@ export interface Job {
    * present on the `GET /jobs` poll.
    */
   estimatedCredits?: number | null
-  /**
-   * UX-facing quality label for the auto-routed video model (e.g. `'standard'`,
-   * `'premium'`), echoed on the video 202 submit response alongside the real
-   * `model` id. Not present on the `GET /jobs` poll.
-   */
+  /** UX-facing quality label echoed on a video submit response. */
   outcomeTier?: string | null
   /**
    * Clip duration in seconds. Echoed on the video 202 submit response and
@@ -818,9 +779,8 @@ export interface JobListResult {
 /** Video-specific options for {@link CreateVideoParams}. */
 export interface VideoOptions {
   /**
-   * Clip duration in seconds (default: 5). Must be one of the durations the
-   * chosen model allows -- an unsupported value is rejected by the API with a
-   * 400.
+   * Clip duration in seconds (default: 4). Unsupported values are rejected
+   * with a 400.
    */
   durationSeconds?: number
   /** Include generated audio (default: false). */
@@ -832,12 +792,6 @@ export interface VideoOptions {
    * - `showcase` -- more pronounced product-showcase movement
    */
   motion?: 'ambient' | 'showcase'
-  /**
-   * Force a specific model by id (overrides the auto-router). When omitted the
-   * API auto-selects the model for your tier. An unknown/eliminated model id is
-   * rejected with a 400.
-   */
-  advancedModel?: string
 }
 
 export interface CreateVideoParams {
@@ -873,14 +827,11 @@ export interface CreateVideoParams {
 /**
  * Per-call completion webhook override for {@link CreateVideoParams.webhook}.
  *
- * The webhook is an arbitrary object; `url` is the meaningful field, but
- * additional keys are forwarded as-is.
+ * The URL is the complete public override contract.
  */
 export interface VideoWebhookOverride {
   /** Destination URL the completion delivery is POSTed to. */
   url: string
-  /** Any additional fields the backend accepts (forwarded verbatim). */
-  [key: string]: unknown
 }
 
 // ---------------------------------------------------------------------------
@@ -894,6 +845,11 @@ export type WebhookEvent =
   | 'upload.succeeded'
   | 'video.succeeded'
   | 'video.failed'
+  | '2d_mockup.ready'
+  | '2d_mockup.rejected'
+  | '2d_mockup.failed'
+  | '2d_render.succeeded'
+  | '2d_render.failed'
   | 'webhook.test'
   | (string & {})
 
@@ -922,7 +878,7 @@ export interface CreateWebhookEndpointParams {
   url: string
   /**
    * Event types to subscribe to. Omit or pass `[]` to subscribe to ALL events
-   * (the backend treats an empty list as a wildcard). Default: `[]`.
+   * (an empty list subscribes to all events). Default: `[]`.
    */
   eventTypes?: WebhookEvent[]
   /** Optional description. */
@@ -1045,23 +1001,109 @@ export interface AccountResult {
 // Studio
 // ---------------------------------------------------------------------------
 
-export interface CreateSessionParams {
-  /** Mockup UUID to lock the session to */
-  mockupUuid: string
-  /** Optional product ID from the platform */
-  productId?: string
-  /** Optional shop domain */
-  shop?: string
+export interface StudioSessionUi {
+  primaryActionLabel?: string
+  secondaryActionLabel?: string
+  accentColor?: `#${string}`
 }
 
+interface StudioSessionCommon {
+  /** Optional product ID from the platform. */
+  productId?: string
+  /** Optional product variant ID from the platform. */
+  variantId?: string
+  /** Exact origin of the page embedding the Studio iframe. */
+  allowedOrigin: string
+  /** Optional allowlisted routing identifier returned with the result event. */
+  actionId?: string
+}
+
+export type CreateSessionParams =
+  | (StudioSessionCommon & {
+      mockupType?: 'psd'
+      sessionKind?: 'customize'
+      mockupUuid: string
+      ui?: never
+    })
+  | (StudioSessionCommon & {
+      mockupType: '2d'
+      sessionKind: 'customize'
+      mockupUuid: string
+      ui?: StudioSessionUi
+    })
+  | (StudioSessionCommon & {
+      mockupType: '2d'
+      sessionKind: 'setup'
+      mockupUuid?: string
+      ui?: StudioSessionUi
+    })
+
 export interface SessionResult {
+  success: true
+  mockupType: 'psd' | '2d'
   session: string
   expiresIn: number
-  displayMode: 'iframe' | 'popup' | 'page'
+  messageSessionId: string
+  bootstrapSecret: string
+}
+
+export interface StudioResultPayload {
+  mockup_uuid: string
+  render_uuid: string
+  action_id?: string
+}
+
+interface StudioResultEventCommon {
+  version: 1
+  source: 'sudomock-studio'
+  request_id: string
+  message_session_id: string
+}
+
+export type StudioResultEvent =
+  | (StudioResultEventCommon & {
+      type: 'studio.mockup-saved'
+      payload: StudioResultPayload
+    })
+  | (StudioResultEventCommon & {
+      type: 'studio.design-submitted'
+      payload: StudioResultPayload
+    })
+
+export interface StudioActionContext {
+  shop?: string
+  productId?: string
+  variantId?: string
+}
+
+/** Server-confirmed context; omitted values may be serialized as null. */
+export interface StudioActionReceiptContext {
+  shop?: string | null
+  productId?: string | null
+  variantId?: string | null
+}
+
+export interface StudioActionReceipt {
+  version: 1
+  requestId: string
+  messageSessionId: string
+  type: 'studio.mockup-saved' | 'studio.design-submitted'
+  mockupType: 'psd' | '2d'
+  sessionKind: 'setup' | 'customize'
+  actionId?: string | null
+  actionContext: StudioActionReceiptContext
+  mockupUuid: string
+  renderUuid: string
+}
+
+export interface ConsumeStudioActionResult {
+  success: true
+  replayed: boolean
+  receipt: StudioActionReceipt
 }
 
 // ---------------------------------------------------------------------------
-// API Envelope (internal)
+// API Envelope
 // ---------------------------------------------------------------------------
 
 export interface ApiResponse<T> {
@@ -1072,7 +1114,7 @@ export interface ApiResponse<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Error Response (internal)
+// Error Response
 // ---------------------------------------------------------------------------
 
 export interface ApiErrorBody {
