@@ -1,6 +1,7 @@
 import type { HttpClient } from '../client'
 import type { UploadParams, UploadResult, Job } from '../types'
 import { isJobBody, toJob } from './jobs'
+import { toPublicMockup } from './mockups'
 
 /** Default upload timeout: 120s (PSD processing can be slow) */
 const UPLOAD_TIMEOUT = 120_000
@@ -46,7 +47,11 @@ export class UploadsResource {
     >({
       method: 'POST',
       path: '/api/v1/psd/upload',
-      body: params,
+      body: {
+        psdFileUrl: params.psdFileUrl,
+        psdName: params.psdName,
+        isAsync: params.isAsync,
+      },
       timeout: UPLOAD_TIMEOUT,
     })
 
@@ -54,6 +59,7 @@ export class UploadsResource {
       return toJob(data)
     }
 
-    return data as UploadResult
+    const result = data as UploadResult
+    return toPublicMockup(result)
   }
 }

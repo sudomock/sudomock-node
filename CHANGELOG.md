@@ -3,7 +3,33 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [2.4.0] - 2026-07-27
+
+### Added
+
+- Studio result events can be confirmed server-side with
+  `client.studio.consumeAction(...)`, which returns the exactly-once action
+  receipt.
+- 2D full product surfaces are returned in `mockup.surfaces` and can be
+  rendered with `surfaceUuid`; saved print areas continue to use `uuid`.
+- 2D list/detail results expose `mockup.customizable`; pass
+  `customizableOnly: true` to list only shopper-ready mockups.
+
+### Changed
+
+- `client.ai.updatePrintAreas(mockupId, [])` now forwards the empty
+  representation. The API accepts it only for verified full product surfaces.
+- Studio result and receipt payloads use `renderUuid` as the opaque
+  confirmation handle.
+- Async job, webhook-delivery, and API error objects now expose only documented
+  outcome fields and safe customer messages.
+- Render results expose output files, the render UUID, and actionable
+  `warnings`.
+- Video quality selection is automatic.
+
+### Fixed
+
+- Video renders now default to a supported 4-second duration.
 
 ## [2.3.0] - 2026-07-26
 
@@ -30,9 +56,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - PSD text personalization through `renders.create({ textLayers })`, including
   single-style text, styled segments, font, size, color, outline color, and fit
   controls. `smartObjects` is optional for text-only renders.
-- Typed text-layer metadata on mockup/upload responses and font details on
-  render responses.
-- Successful response warnings and backend error codes are now surfaced.
+- Typed text-layer metadata on mockup/upload responses.
+- Successful response warnings and API error codes are now surfaced.
 
 ## [2.1.0] - 2026-07-21
 
@@ -105,8 +130,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **BREAKING — `client.ai.render()`** now renders artwork onto an existing 2D
   mockup via `POST /sudoai/2d-mockup/render`. It takes `{ mockupId, printAreas,
   exportOptions }` and returns `{ printFiles: [{ exportPath, durationMs,
-  exportFormat }], url }`. The previous `sourceUrl` / `artworkUrl` segmentation
-  flow (with `confidence` / `segmentIndex`) has been removed.
+  exportFormat }], url }`. The previous source/artwork preprocessing fields
+  have been removed.
 - **BREAKING — render `AdjustmentLayers`** dropped the non-existent `hue` field;
   added `opacity`, `vibrance`, `blur`.
 - `ExportOptions` documented defaults corrected to BE truth: `imageFormat=webp`,

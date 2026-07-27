@@ -29,34 +29,90 @@ export function isJobBody(body: unknown): boolean {
 }
 
 /**
- * Normalize a parsed job body. The API exposes the lifecycle on a `status`
- * field (on both the 202 submit response and the `GET /jobs` poll). We also
- * accept a legacy `state` key for forward/backward compatibility. Defaults
- * `kind` to `'render'` when absent.
+ * Normalize a parsed job body to the public outcome contract.
  */
 export function toJob(body: unknown): Job {
   const raw = (body ?? {}) as Record<string, unknown>
-  const status = (raw['status'] ?? raw['state']) as Job['status'] | undefined
+  const status = raw['status'] as Job['status'] | undefined
   const failure =
     typeof raw['error'] === 'object' && raw['error'] !== null
       ? (raw['error'] as Record<string, unknown>)
       : null
-  return {
-    ...(raw as unknown as Job),
+  const rawError =
+    failure && typeof failure['message'] === 'string'
+      ? failure['message']
+      : typeof raw['error'] === 'string'
+        ? raw['error']
+        : typeof raw['message'] === 'string'
+          ? raw['message']
+          : null
+  const rawErrorCode =
+    typeof failure?.['errorCode'] === 'string'
+      ? failure['errorCode']
+      : typeof raw['errorCode'] === 'string'
+        ? raw['errorCode']
+        : null
+  const payg =
+    raw['payg'] && typeof raw['payg'] === 'object'
+      ? {
+          credits: (raw['payg'] as Record<string, unknown>)['credits'] as
+            | number
+            | null
+            | undefined,
+          unitPrice: (raw['payg'] as Record<string, unknown>)['unitPrice'] as
+            | number
+            | null
+            | undefined,
+          cost: (raw['payg'] as Record<string, unknown>)['cost'] as
+            | number
+            | null
+            | undefined,
+        }
+      : raw['payg'] === null
+        ? null
+        : undefined
+  const publicJob = {
+    jobId: raw['jobId'] as string,
     kind: (raw['kind'] as Job['kind']) ?? 'render',
     status: status ?? 'queued',
+    statusUrl: raw['statusUrl'] as string | undefined,
+    resultUrl: raw['resultUrl'] as string | null | undefined,
+    mockupUuid: raw['mockupUuid'] as string | null | undefined,
     error:
       status === 'failed'
-        ? failure
-          ? typeof failure['message'] === 'string'
-            ? failure['message']
-            : null
-          : ((raw['error'] ?? raw['message']) as Job['error'])
+        ? publicFailureText(rawError)
         : undefined,
     errorCode:
-      (failure?.['errorCode'] as string | undefined) ??
-      (raw['errorCode'] as string | null | undefined),
+      rawErrorCode === null ? undefined : publicFailureCode(rawErrorCode),
+    creditsCharged: raw['creditsCharged'] as number | null | undefined,
+    payg,
+    createdAt: raw['createdAt'] as string | undefined,
+    updatedAt: raw['updatedAt'] as string | undefined,
+    estimatedCredits: raw['estimatedCredits'] as number | null | undefined,
+    outcomeTier: raw['outcomeTier'] as string | null | undefined,
+    durationSeconds: raw['durationSeconds'] as number | null | undefined,
+    audio: raw['audio'] as boolean | null | undefined,
+    mockupName: raw['mockupName'] as string | null | undefined,
+    posterUrl: raw['posterUrl'] as string | null | undefined,
   }
+  return Object.fromEntries(
+    Object.entries(publicJob).filter(([, value]) => value !== undefined),
+  ) as unknown as Job
+}
+
+const ENGINE_DETAIL =
+  /gemini|advanced.?model|\bmodel\b|prompt|mask(?:_|-|\b)|segment(?:ation)?(?:_|-|\b)|region.?index|depth|displacement|grid|warp|shading|provider|pipeline|engine|internal|private|storage|bucket|config.?version|setup.?revision|edit.?generation|\bphase\b|state.?machine|(?:internal|processing|workflow).?state/i
+
+function publicFailureText(value: string | null): string | null {
+  if (!value) return value
+  return ENGINE_DETAIL.test(value)
+    ? 'Processing failed. Retry or contact support with the job ID.'
+    : value
+}
+
+function publicFailureCode(value: string | null): string | null {
+  if (!value) return value
+  return ENGINE_DETAIL.test(value) ? 'PROCESSING_FAILED' : value
 }
 
 export class JobsResource {

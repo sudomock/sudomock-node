@@ -9,7 +9,7 @@ import {
   TimeoutError,
   ConnectionError,
 } from './errors'
-import type { ApiErrorBody } from './types'
+import type { ApiErrorBody, ApiWarning } from './types'
 
 // ---------------------------------------------------------------------------
 // snake_case <-> camelCase helpers
@@ -88,6 +88,34 @@ const INITIAL_BACKOFF_MS = 500
 
 /** Status codes that are safe to retry */
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
+
+/** Engine diagnostics are never part of the SDK's public error contract. */
+const ENGINE_DETAIL =
+  /gemini|advanced.?model|\bmodel\b|prompt|mask(?:_|-|\b)|segment(?:ation)?(?:_|-|\b)|region.?index|depth|displacement|grid|warp|shading|provider|pipeline|engine|internal|private|storage|bucket|config.?version|setup.?revision|edit.?generation|\bphase\b|state.?machine|(?:internal|processing|workflow).?state/i
+
+function publicErrorText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string' || !value || ENGINE_DETAIL.test(value)) {
+    return fallback
+  }
+  return value
+}
+
+function publicErrorCode(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value) return undefined
+  return ENGINE_DETAIL.test(value) ? 'PROCESSING_FAILED' : value
+}
+
+export function publicWarnings(
+  warnings: ApiWarning[] | undefined,
+): ApiWarning[] | undefined {
+  return warnings?.map((warning) => ({
+    code: publicErrorCode(warning.code) ?? 'RENDER_WARNING',
+    message: publicErrorText(
+      warning.message,
+      'The request completed with an advisory.',
+    ),
+  }))
+}
 
 /** Response wrapper that preserves the HTTP status alongside the parsed body. */
 export interface ResponseWithStatus<T> {
@@ -271,11 +299,17 @@ export class HttpClient {
     body: Record<string, unknown>,
     headers: Headers,
   ): SudoMockError {
-    const detail =
+    const rawDetail =
       (body as ApiErrorBody).detail ??
       (body as ApiErrorBody).message ??
       `HTTP ${status}`
-    const code = (body as ApiErrorBody).error_code
+    const detail = publicErrorText(
+      rawDetail,
+      status >= 500
+        ? 'SudoMock could not complete the request. Retry shortly.'
+        : 'The request could not be completed.',
+    )
+    const code = publicErrorCode((body as ApiErrorBody).error_code)
 
     switch (status) {
       case 400:

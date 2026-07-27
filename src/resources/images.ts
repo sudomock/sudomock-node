@@ -45,7 +45,7 @@ export class ImagesResource {
       throw new ValidationError('Provide exactly one of url or base64')
     }
 
-    return this.client.request<RemoveBackgroundResult>({
+    const result = await this.client.request<RemoveBackgroundResult>({
       method: 'POST',
       path: '/api/v1/remove-background',
       body: {
@@ -55,5 +55,11 @@ export class ImagesResource {
       },
       timeout: REMOVE_BACKGROUND_TIMEOUT,
     })
+    return {
+      url: result.url,
+      width: result.width,
+      height: result.height,
+      creditsCharged: result.creditsCharged,
+    }
   }
 }

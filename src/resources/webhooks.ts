@@ -17,6 +17,40 @@ import type {
  */
 const DEFAULT_TOLERANCE_SECONDS = 300
 
+const ENGINE_DETAIL =
+  /gemini|advanced.?model|\bmodel\b|prompt|mask(?:_|-|\b)|segment(?:ation)?(?:_|-|\b)|region.?index|depth|displacement|grid|warp|shading|provider|pipeline|engine|internal|private|storage|bucket|config.?version|setup.?revision|edit.?generation|\bphase\b|state.?machine|(?:internal|processing|workflow).?state/i
+
+function toWebhookDelivery(value: WebhookDelivery): WebhookDelivery {
+  return {
+    id: value.id,
+    endpointId: value.endpointId,
+    jobId: value.jobId,
+    eventType: value.eventType,
+    status: value.status,
+    httpStatus: value.httpStatus,
+    attempt: value.attempt,
+    lastError:
+      value.lastError && ENGINE_DETAIL.test(value.lastError)
+        ? 'Delivery failed. Retry it or contact support with the delivery ID.'
+        : value.lastError,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  }
+}
+
+function toWebhookEndpoint(value: WebhookEndpoint): WebhookEndpoint {
+  return {
+    id: value.id,
+    url: value.url,
+    secret: value.secret,
+    description: value.description,
+    eventTypes: value.eventTypes,
+    enabled: value.enabled,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  }
+}
+
 export class WebhooksResource {
   constructor(private readonly client: HttpClient) {}
 
@@ -29,20 +63,22 @@ export class WebhooksResource {
    * ```
    */
   async list(): Promise<WebhookEndpoint[]> {
-    return this.client.request<WebhookEndpoint[]>({
+    const endpoints = await this.client.request<WebhookEndpoint[]>({
       method: 'GET',
       path: '/api/v1/webhook-endpoints',
     })
+    return endpoints.map(toWebhookEndpoint)
   }
 
   /**
    * Get a single webhook endpoint by id.
    */
   async retrieve(id: string): Promise<WebhookEndpoint> {
-    return this.client.request<WebhookEndpoint>({
+    const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'GET',
       path: `/api/v1/webhook-endpoints/${id}`,
     })
+    return toWebhookEndpoint(endpoint)
   }
 
   /**
@@ -59,12 +95,17 @@ export class WebhooksResource {
    * ```
    */
   async create(params: CreateWebhookEndpointParams): Promise<WebhookEndpoint> {
-    return this.client.request<WebhookEndpoint>({
+    const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'POST',
       path: '/api/v1/webhook-endpoints',
       // Default to the wildcard subscription (all events) when omitted.
-      body: { ...params, eventTypes: params.eventTypes ?? [] },
+      body: {
+        url: params.url,
+        eventTypes: params.eventTypes ?? [],
+        description: params.description,
+      },
     })
+    return toWebhookEndpoint(endpoint)
   }
 
   /**
@@ -75,11 +116,17 @@ export class WebhooksResource {
     id: string,
     params: UpdateWebhookEndpointParams,
   ): Promise<WebhookEndpoint> {
-    return this.client.request<WebhookEndpoint>({
+    const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'PATCH',
       path: `/api/v1/webhook-endpoints/${id}`,
-      body: params,
+      body: {
+        url: params.url,
+        eventTypes: params.eventTypes,
+        description: params.description,
+        enabled: params.enabled,
+      },
     })
+    return toWebhookEndpoint(endpoint)
   }
 
   /**
@@ -97,10 +144,11 @@ export class WebhooksResource {
    * full -- update your verifier with it.
    */
   async rotateSecret(id: string): Promise<WebhookEndpoint> {
-    return this.client.request<WebhookEndpoint>({
+    const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'POST',
       path: `/api/v1/webhook-endpoints/${id}/rotate-secret`,
     })
+    return toWebhookEndpoint(endpoint)
   }
 
   /**
@@ -126,7 +174,7 @@ export class WebhooksResource {
   async listEvents(
     params: ListWebhookEventsParams = {},
   ): Promise<WebhookDelivery[]> {
-    return this.client.request<WebhookDelivery[]>({
+    const deliveries = await this.client.request<WebhookDelivery[]>({
       method: 'GET',
       path: '/api/v1/webhook-endpoints/events',
       query: {
@@ -135,6 +183,7 @@ export class WebhooksResource {
         limit: params.limit,
       },
     })
+    return deliveries.map(toWebhookDelivery)
   }
 
   /**
@@ -145,7 +194,7 @@ export class WebhooksResource {
     id: string,
     params: ListDeliveriesParams = {},
   ): Promise<WebhookDelivery[]> {
-    return this.client.request<WebhookDelivery[]>({
+    const deliveries = await this.client.request<WebhookDelivery[]>({
       method: 'GET',
       path: `/api/v1/webhook-endpoints/${id}/deliveries`,
       query: {
@@ -154,6 +203,7 @@ export class WebhooksResource {
         limit: params.limit,
       },
     })
+    return deliveries.map(toWebhookDelivery)
   }
 
   /**
@@ -176,10 +226,11 @@ export class WebhooksResource {
    * ```
    */
   async replayFailed(id: string): Promise<ReplayFailedResult> {
-    return this.client.request<ReplayFailedResult>({
+    const result = await this.client.request<ReplayFailedResult>({
       method: 'POST',
       path: `/api/v1/webhook-endpoints/${id}/deliveries/replay-failed`,
     })
+    return { status: result.status, count: result.count }
   }
 }
 

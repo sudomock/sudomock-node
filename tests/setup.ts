@@ -33,6 +33,7 @@ export const MOCK_MOCKUP = {
       layer_name: 'Front Design',
       quad: null,
       blend_mode: 'normal',
+      mask_uuid: 'private-surface',
     },
   ],
   text_layers: [
@@ -53,12 +54,15 @@ export const MOCK_MOCKUP = {
       has_color_overlay: false,
       has_clipped_artwork: false,
       suggested_edit_together: null,
+      resolved_font: { source: 'private-provider' },
     },
   ],
   collections: [],
   thumbnails: [
     { width: 720, url: 'https://cdn.sudomock.com/thumbs/720.webp' },
   ],
+  model: 'private-engine',
+  prompt: 'private instruction',
 }
 
 export const MOCK_RENDER_RESPONSE = {
@@ -81,9 +85,12 @@ export const MOCK_AI_RENDER_RESPONSE = {
         export_path: 'https://cdn.sudomock.com/renders/sudoai/abc123.png',
         duration_ms: 2340,
         export_format: 'png',
+        private_storage_key: 'renders/private.png',
       },
     ],
     render_uuid: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    mask_uuid: 'private-surface',
+    model: 'private-engine',
   },
 }
 
@@ -94,6 +101,7 @@ export const MOCK_REMOVE_BACKGROUND_RESPONSE = {
     width: 1200,
     height: 1600,
     credits_charged: 25,
+    private_storage_key: 'cutouts/private.png',
   },
 }
 
@@ -101,6 +109,7 @@ export const MOCK_2D_MOCKUP = {
   mockup_id: '99999999-9999-9999-9999-999999999999',
   name: '2D Tee',
   status: 'ready',
+  customizable: true,
   thumbnail_url: 'https://cdn.sudomock.com/2d/thumb.webp',
   watermarked_source_url: 'https://cdn.sudomock.com/2d/src.webp',
   source_width: 2000,
@@ -113,9 +122,13 @@ export const MOCK_2D_MOCKUP = {
       name: 'Front',
     },
   ],
+  surfaces: [],
   version: 1,
   created_at: '2026-06-21T00:00:00Z',
   updated_at: '2026-06-21T00:00:00Z',
+  mask_url: 'https://private.example/mask.png',
+  region_index: 3,
+  displacement_grid: [[0, 0]],
 }
 
 export const MOCK_ACCOUNT_RESPONSE = {
@@ -126,6 +139,7 @@ export const MOCK_ACCOUNT_RESPONSE = {
       email: 'test@example.com',
       name: 'Test User',
       created_at: '2026-01-01T00:00:00Z',
+      private_state: 'internal',
     },
     subscription: {
       plan: 'pro',
@@ -164,9 +178,11 @@ export const MOCK_UPLOAD_RESPONSE = {
 
 export const MOCK_SESSION_RESPONSE = {
   success: true,
+  mockup_type: 'psd',
   session: 'sess_abcdefghijklmnopqrstuvwxyz1234567890ABCDE',
   expires_in: 900,
-  displayMode: 'iframe',
+  message_session_id: '22222222-2222-4222-8222-222222222222',
+  bootstrap_secret: 'abcdefghijklmnopqrstuvwxyz1234567890ABCDEFG',
 }
 
 // 202 Accepted body for async render/upload/video submissions
@@ -231,6 +247,7 @@ export const MOCK_WEBHOOK_ENDPOINT = {
   enabled: true,
   created_at: '2026-06-21T00:00:00Z',
   updated_at: null,
+  private_endpoint_state: 'internal',
 }
 
 // WebhookDeliveryResponse shape: id, endpoint_id, job_id, event_type,
