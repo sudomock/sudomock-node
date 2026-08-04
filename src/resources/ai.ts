@@ -249,7 +249,10 @@ export class AIResource {
             position: target.placement.position,
             coverage: target.placement.coverage,
             fit: target.placement.fit,
-            scale: target.placement.scale,
+            // Both axes are forwarded. This alone-standing list is why a new
+            // placement field is dropped on the floor unless it is added here.
+            width: target.placement.width,
+            height: target.placement.height,
             rotation: target.placement.rotation,
             offsetX: target.placement.offsetX,
             offsetY: target.placement.offsetY,

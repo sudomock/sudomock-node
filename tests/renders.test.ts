@@ -342,6 +342,71 @@ describe('ai.render() — 2D mockup', () => {
     expect(Object.keys(printAreas[0]!)).not.toContain('removeBackground')
   })
 
+  // ai.render() rebuilds `placement` field by field, so a field that is not
+  // named there is dropped before the request is built -- no error, no 4xx,
+  // just a render at the default coverage. These pin both axes to the wire.
+  it('forwards a ratio-breaking placement size on both axes', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
+        },
+      ),
+    )
+
+    await createClient().ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        {
+          uuid: 'pa-uuid',
+          artworkUrl: 'https://example.com/design.png',
+          // Deliberately nothing like the artwork's own aspect ratio.
+          placement: { width: 800, height: 200 },
+        },
+      ],
+    })
+
+    const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
+    const placement = printAreas[0]!['placement'] as Record<string, unknown>
+    expect(placement['width']).toBe(800)
+    expect(placement['height']).toBe(200)
+    // The retired single factor must not reappear alongside the two axes.
+    expect(Object.keys(placement)).not.toContain('scale')
+  })
+
+  it('keeps the coverage shorthand working alongside the free axes', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
+        },
+      ),
+    )
+
+    await createClient().ai.render({
+      mockupId: 'mockup-uuid',
+      printAreas: [
+        {
+          uuid: 'pa-uuid',
+          artworkUrl: 'https://example.com/design.png',
+          placement: { position: 'center', coverage: 80, fit: 'contain', rotation: 15 },
+        },
+      ],
+    })
+
+    const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
+    const placement = printAreas[0]!['placement'] as Record<string, unknown>
+    expect(placement['coverage']).toBe(80)
+    expect(placement['fit']).toBe('contain')
+    expect(placement['rotation']).toBe(15)
+  })
+
   it('addresses a full-coverage product surface by surface_uuid', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(

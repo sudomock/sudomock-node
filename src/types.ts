@@ -363,8 +363,18 @@ export interface AIPlacement {
   position?: string
   coverage?: number
   fit?: string
-  /** Scale multiplier applied to the artwork (0.01-10). */
-  scale?: number
+  /**
+   * Artwork width in print-area pixels. Send together with `height`; the pair
+   * overrides `coverage` + `fit`. The two axes are independent, so any aspect
+   * ratio is allowed — stretching on one axis only is a supported placement.
+   */
+  width?: number
+  /**
+   * Artwork height in print-area pixels. Send together with `width`. Sending
+   * only one of the two is rejected rather than silently completed, so the
+   * aspect ratio is never guessed on your behalf.
+   */
+  height?: number
   /** Rotation in degrees, clockwise positive (-360 to 360). */
   rotation?: number
   /** Horizontal offset in pixels. */
