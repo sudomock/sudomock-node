@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { HttpClient } from '../client'
 import type {
+  AIPrintAreaPlacement,
+  AISurfacePlacement,
   AIRenderParams,
   AIRenderResult,
   Create2DMockupParams,
@@ -51,11 +53,89 @@ function publicMockupDetails(mockup: TwoDMockupDetails): TwoDMockupDetails {
   return {
     ...publicMockup(mockup),
     quads: mockup.quads.map(publicQuad),
+    // A surface is named and nothing else. A payload still carrying the
+    // retired `coverage` -- a server one deploy behind -- has it dropped here.
     surfaces: mockup.surfaces.map((surface) => ({
       surfaceUuid: surface.surfaceUuid,
-      coverage: 'full',
     })),
   }
+}
+
+/**
+ * The placement one kind of target answers to, rebuilt field by field.
+ *
+ * Sizing is split by target kind: a surface takes a `coverage` percentage of
+ * the whole product, a print area takes a `fit` against its own bounds, and
+ * either one takes an explicit `width` + `height` box instead. Anchoring
+ * belongs to both. Naming the other kind's sizing option is refused here, with
+ * the reason, instead of being sent and charged for: the API answers that pair
+ * with a 422, and the round trip tells the caller less than this does.
+ * TypeScript already forbids the pair, but a JavaScript caller meets no types.
+ *
+ * Returns `undefined` when nothing the API reads survived, so the request
+ * leaves the key off entirely rather than carrying an empty placement.
+ */
+function wirePlacement(
+  placement: AIPrintAreaPlacement | AISurfacePlacement | undefined,
+  targetKind: 'print_area' | 'surface',
+): Record<string, unknown> | undefined {
+  if (!placement) return undefined
+
+  const isPrintArea = targetKind === 'print_area'
+  // Presence, not truthiness: writing the option out with a `null` is the
+  // caller naming it, and waving that through would teach nothing.
+  const crossed = isPrintArea ? 'coverage' : 'fit'
+  if (
+    Object.prototype.hasOwnProperty.call(placement, crossed) &&
+    (placement as Record<string, unknown>)[crossed] !== undefined
+  ) {
+    throw new ValidationError(
+      isPrintArea
+        ? 'coverage belongs to a surface target. Size the artwork in a print area with fit, or with width and height.'
+        : 'fit belongs to a print area target. Size the artwork on a surface with coverage, or with width and height.',
+    )
+  }
+
+  const dials: Record<string, unknown> = {
+    position: placement.position,
+    // Both axes are forwarded. This alone-standing list is why a new
+    // placement field is dropped on the floor unless it is added here.
+    width: placement.width,
+    height: placement.height,
+    rotation: placement.rotation,
+    offsetX: placement.offsetX,
+    offsetY: placement.offsetY,
+    ...(isPrintArea
+      ? { fit: (placement as AIPrintAreaPlacement).fit }
+      : { coverage: (placement as AISurfacePlacement).coverage }),
+  }
+
+  const named = Object.fromEntries(
+    Object.entries(dials).filter(([, value]) => value !== undefined),
+  )
+
+  // The type system already forbids these, but a plain JavaScript caller never
+  // meets it. Without this they reach the API and come back a 422, one spent
+  // call later, with the SDK having had every fact it needed to say so first.
+  // The Python SDK refuses the same two shapes at the same boundary.
+  const hasWidth = 'width' in named
+  const hasHeight = 'height' in named
+  if (hasWidth !== hasHeight) {
+    throw new ValidationError(
+      'width and height travel together. Send both, or neither.',
+    )
+  }
+  const sizings = [
+    isPrintArea ? 'fit' : 'coverage',
+    ...(hasWidth ? ['an explicit width and height'] : []),
+  ].filter((name) => name.startsWith('an ') || name in named)
+  if (sizings.length > 1) {
+    throw new ValidationError(
+      `${sizings.join(' and ')} are different ways to size the same artwork. Send one of them.`,
+    )
+  }
+
+  return Object.keys(named).length > 0 ? named : undefined
 }
 
 /**
@@ -189,9 +269,11 @@ export class AIResource {
    * Render artwork (or a color) onto an existing 2D mockup.
    *
    * Targets `POST /api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id
-   * lives in the path). Target a saved print area with `uuid`, or a
-   * full-coverage product surface with `surfaceUuid`. Each target must supply `artworkUrl` OR
-   * `color`. Costs 5 credits.
+   * lives in the path). Target a saved print area with `uuid` -- a bounded zone
+   * drawn on the product, which takes a `fit` or an explicit box -- or a product
+   * surface with `surfaceUuid`, which takes a `coverage` percentage. A product
+   * can have both, and they are separate targets. Each target must supply
+   * `artworkUrl` OR `color`. Costs 5 credits.
    *
    * By default this blocks until the render finishes and resolves with an
    * {@link AIRenderResult} (the rendered `printFiles` plus a `renderUuid` you
@@ -227,39 +309,33 @@ export class AIResource {
   render(params: AIRenderParams & { isAsync: true }): Promise<Job>
   render(params: AIRenderParams): Promise<AIRenderResult>
   async render(params: AIRenderParams): Promise<AIRenderResult | Job> {
-    const printAreas = params.printAreas.map((target) => ({
-      ...('uuid' in target && target.uuid
-        ? { uuid: target.uuid }
-        : { surfaceUuid: target.surfaceUuid }),
-      artworkUrl: target.artworkUrl,
-      base64: target.base64,
-      color: target.color,
-      adjustments: target.adjustments
-        ? {
-            brightness: target.adjustments.brightness,
-            contrast: target.adjustments.contrast,
-            opacity: target.adjustments.opacity,
-            saturation: target.adjustments.saturation,
-            vibrance: target.adjustments.vibrance,
-            blur: target.adjustments.blur,
-          }
-        : undefined,
-      placement: target.placement
-        ? {
-            position: target.placement.position,
-            coverage: target.placement.coverage,
-            fit: target.placement.fit,
-            // Both axes are forwarded. This alone-standing list is why a new
-            // placement field is dropped on the floor unless it is added here.
-            width: target.placement.width,
-            height: target.placement.height,
-            rotation: target.placement.rotation,
-            offsetX: target.placement.offsetX,
-            offsetY: target.placement.offsetY,
-          }
-        : undefined,
-      removeBackground: target.removeBackground,
-    }))
+    const printAreas = params.printAreas.map((target) => {
+      // A print area and a surface are addressed by different keys, and each
+      // one reads its own placement dials. The key the caller named is what
+      // decides which set travels.
+      const targetKind =
+        'uuid' in target && target.uuid ? 'print_area' : 'surface'
+      return {
+        ...(targetKind === 'print_area'
+          ? { uuid: target.uuid }
+          : { surfaceUuid: target.surfaceUuid }),
+        artworkUrl: target.artworkUrl,
+        base64: target.base64,
+        color: target.color,
+        adjustments: target.adjustments
+          ? {
+              brightness: target.adjustments.brightness,
+              contrast: target.adjustments.contrast,
+              opacity: target.adjustments.opacity,
+              saturation: target.adjustments.saturation,
+              vibrance: target.adjustments.vibrance,
+              blur: target.adjustments.blur,
+            }
+          : undefined,
+        placement: wirePlacement(target.placement, targetKind),
+        removeBackground: target.removeBackground,
+      }
+    })
     const body: Record<string, unknown> = {
       printAreas,
       exportOptions: params.exportOptions,
@@ -353,7 +429,8 @@ export class AIResource {
   /**
    * Replace all print areas on a 2D mockup with up to 8 four-point quads. An
    * empty array is accepted only when the API has verified every product
-   * surface as full coverage. Each quad may carry an optional `name`.
+   * surface as printable; each of those is then a render target in its own
+   * right. Each quad may carry an optional `name`.
    */
   async updatePrintAreas(
     mockupId: string,

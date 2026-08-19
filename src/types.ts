@@ -358,23 +358,9 @@ export interface AIAdjustments {
   blur?: number
 }
 
-/** Placement of the artwork within a print area. */
-export interface AIPlacement {
+/** Where the artwork sits and how it is turned. Applies to every target. */
+export interface AIPlacementBase {
   position?: string
-  coverage?: number
-  fit?: string
-  /**
-   * Artwork width in print-area pixels. Send together with `height`; the pair
-   * overrides `coverage` + `fit`. The two axes are independent, so any aspect
-   * ratio is allowed — stretching on one axis only is a supported placement.
-   */
-  width?: number
-  /**
-   * Artwork height in print-area pixels. Send together with `width`. Sending
-   * only one of the two is rejected rather than silently completed, so the
-   * aspect ratio is never guessed on your behalf.
-   */
-  height?: number
   /** Rotation in degrees, clockwise positive (-360 to 360). */
   rotation?: number
   /** Horizontal offset in pixels. */
@@ -382,6 +368,91 @@ export interface AIPlacement {
   /** Vertical offset in pixels. */
   offsetY?: number
 }
+
+/**
+ * Placement of the artwork across a whole product surface.
+ *
+ * Sizing has exactly one answer per request: either a `coverage` percentage of
+ * the product, or an explicit `width` + `height` box. A percentage cannot
+ * express a box whose proportions differ from the surface, which is how an
+ * all-over print somebody resized on a canvas is sent. There is no fit to
+ * choose: a surface covers the whole product, so there are no bounds to fit
+ * against.
+ */
+export type AISurfacePlacement = AIPlacementBase & {
+  fit?: never
+} & (
+    | {
+        /**
+         * How much of the surface the artwork spans, as a percentage (10-100).
+         * Omit to span the whole surface.
+         */
+        coverage?: number
+        width?: never
+        height?: never
+      }
+    | {
+        coverage?: never
+        /**
+         * Artwork width in surface pixels. Send together with `height`. The two
+         * axes are independent, so any aspect ratio is allowed, and stretching on
+         * one axis only is a supported placement.
+         */
+        width: number
+        /**
+         * Artwork height in surface pixels. Send together with `width`. Half a
+         * size is not a size, so the pair travels together or not at all.
+         */
+        height: number
+      }
+  )
+
+/**
+ * Placement of the artwork within one saved print area.
+ *
+ * Sizing has exactly one answer per request: either a `fit` against the area's
+ * bounds, or an explicit `width` + `height` box. Naming both is two answers to
+ * one question and the API answers the pair with a 422 rather than picking one.
+ * There is no coverage to set: a percentage is relative to a whole product, and
+ * a bounded zone has nothing to take a percentage of.
+ */
+export type AIPrintAreaPlacement = AIPlacementBase & {
+  coverage?: never
+} & (
+    | {
+        /**
+         * How the artwork meets the area, which it always fills edge to edge:
+         * `contain` keeps the proportions, `fill` stretches, `cover` fills and
+         * crops. Omit for `contain`. To sit inside the area with room around
+         * it, send `width` + `height` instead.
+         */
+        fit?: 'contain' | 'fill' | 'cover'
+        width?: never
+        height?: never
+      }
+    | {
+        fit?: never
+        /**
+         * Artwork width in print-area pixels. Send together with `height`, and
+         * without `fit`. The two axes are independent, so any aspect ratio is
+         * allowed, and stretching on one axis only is a supported placement.
+         */
+        width: number
+        /**
+         * Artwork height in print-area pixels. Send together with `width`.
+         * Sending only one of the two is rejected rather than silently
+         * completed, so the aspect ratio is never guessed on your behalf.
+         */
+        height: number
+      }
+  )
+
+/**
+ * @deprecated Reach for `AISurfacePlacement` or `AIPrintAreaPlacement`. A
+ * single shape could only describe in prose which fields belonged where, and
+ * the crossed pair reached the API and came back 422.
+ */
+export type AIPlacement = AISurfacePlacement | AIPrintAreaPlacement
 
 /** Artwork or color placed on one saved print area or full product surface. */
 export type AIPrintArea = {
@@ -393,8 +464,6 @@ export type AIPrintArea = {
   color?: string
   /** Image adjustments for this print area. */
   adjustments?: AIAdjustments
-  /** Artwork placement options. */
-  placement?: AIPlacement
   /**
    * Remove the background from this print area's artwork before placing it,
    * isolating the subject onto a clean transparent cutout.
@@ -405,14 +474,18 @@ export type AIPrintArea = {
   removeBackground?: boolean
 } & (
   | {
-      /** UUID of a saved print area. */
+      /** UUID of a saved print area -- a bounded zone drawn on the product. */
       uuid: string
       surfaceUuid?: never
+      /** Artwork placement within the area: a fit, or an explicit box. */
+      placement?: AIPrintAreaPlacement
     }
   | {
-      /** UUID of a full-coverage product surface. */
+      /** UUID of a product surface -- one printable product in the photo. */
       surfaceUuid: string
       uuid?: never
+      /** Artwork placement across the surface: how much of it to span. */
+      placement?: AISurfacePlacement
     }
 )
 
@@ -519,10 +592,16 @@ export interface TwoDMockupQuad {
   name?: string
 }
 
-/** A full product surface that is addressed directly during render. */
+/**
+ * One printable product in the photo, addressed directly during render.
+ *
+ * Nothing here says what kind of surface it is. Being listed under `surfaces`
+ * is the whole statement; the fixed `coverage: 'full'` that used to ride along
+ * named nothing a caller could act on while reading exactly like a dial they
+ * could turn.
+ */
 export interface TwoDFullSurface {
   surfaceUuid: string
-  coverage: 'full'
 }
 
 /** Replacement geometry for one 2D print area. */
@@ -561,7 +640,7 @@ export interface TwoDMockup {
 /** Full 2D mockup returned by `client.ai.get()` and `waitForReady()`. */
 export interface TwoDMockupDetails extends TwoDMockup {
   quads: TwoDMockupQuad[]
-  /** Full-coverage product surfaces available as render targets. */
+  /** Every printable product in the photo, each a render target on its own. */
   surfaces: TwoDFullSurface[]
 }
 
@@ -991,6 +1070,21 @@ export interface UsageInfo {
   creditsRemaining: number
   billingPeriodStart: string
   billingPeriodEnd: string
+  /**
+   * Money the account holds and spends per render, in `prepaidBalanceCurrency`.
+   *
+   * Independent of the three `credits*` fields above, which count a
+   * subscription allowance. An account that pays as it goes has no allowance,
+   * so all three are legitimately `0` while the account can still pay. Read
+   * both before concluding an account is out of funds, and never draw a
+   * progress bar from this number: a balance is an amount, not a fraction.
+   *
+   * `0` when the account holds no balance, and also `0` against a deployment
+   * that predates the field.
+   */
+  prepaidBalance: number
+  /** ISO 4217 currency of `prepaidBalance`. */
+  prepaidBalanceCurrency: string
 }
 
 export interface ApiKeyInfo {

@@ -10,11 +10,24 @@ export class AccountResource {
    * Returns account details, subscription info, credit usage,
    * and API key metadata.
    *
+   * An account is funded either by a subscription allowance or by a prepaid
+   * balance, so read both. An account paying as it goes has no allowance and
+   * reports `creditsLimit: 0`, which renders as `0 / 0` if `prepaidBalance` is
+   * ignored.
+   *
    * @example
    * ```ts
-   * const account = await client.account.get()
-   * console.log(`Credits: ${account.usage.creditsRemaining}`)
-   * console.log(`Plan: ${account.subscription.plan}`)
+   * const { usage } = await client.account.get()
+   *
+   * if (usage.creditsLimit > 0) {
+   *   console.log(`${usage.creditsRemaining} of ${usage.creditsLimit} credits left`)
+   * }
+   * if (usage.prepaidBalance > 0) {
+   *   console.log(`${usage.prepaidBalance.toFixed(2)} ${usage.prepaidBalanceCurrency} balance`)
+   * }
+   * if (usage.creditsRemaining === 0 && usage.prepaidBalance === 0) {
+   *   console.log('No credits or balance. Add a credit card.')
+   * }
    * ```
    */
   async get(): Promise<AccountResult> {
@@ -43,6 +56,14 @@ export class AccountResource {
         creditsRemaining: result.usage.creditsRemaining,
         billingPeriodStart: result.usage.billingPeriodStart,
         billingPeriodEnd: result.usage.billingPeriodEnd,
+        // This map is an allowlist: it rebuilds the object key by key, so a
+        // field missing here is dropped without a trace no matter what the API
+        // sent. Both lines below are load-bearing for that reason.
+        //
+        // Coalesced rather than passed through, so the declared non-optional
+        // type stays honest against a deployment that predates the fields.
+        prepaidBalance: result.usage.prepaidBalance ?? 0,
+        prepaidBalanceCurrency: result.usage.prepaidBalanceCurrency ?? 'USD',
       },
       apiKey: {
         name: result.apiKey.name,

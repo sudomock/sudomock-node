@@ -377,7 +377,7 @@ describe('ai.render() — 2D mockup', () => {
     expect(Object.keys(placement)).not.toContain('scale')
   })
 
-  it('keeps the coverage shorthand working alongside the free axes', async () => {
+  it('gives each target kind its own placement dial', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
@@ -389,25 +389,38 @@ describe('ai.render() — 2D mockup', () => {
       ),
     )
 
+    // Each target kind carries only its own dial, and the type system is what
+    // enforces it: handing a print area a coverage, or a surface a fit, does
+    // not compile. This test used to send both on one target, which the API
+    // now answers with a 422.
     await createClient().ai.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         {
           uuid: 'pa-uuid',
           artworkUrl: 'https://example.com/design.png',
-          placement: { position: 'center', coverage: 80, fit: 'contain', rotation: 15 },
+          placement: { position: 'center', fit: 'contain', rotation: 15 },
+        },
+        {
+          surfaceUuid: 'surface-uuid',
+          artworkUrl: 'https://example.com/design.png',
+          placement: { position: 'center', coverage: 80 },
         },
       ],
     })
 
     const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
-    const placement = printAreas[0]!['placement'] as Record<string, unknown>
-    expect(placement['coverage']).toBe(80)
-    expect(placement['fit']).toBe('contain')
-    expect(placement['rotation']).toBe(15)
+    const areaPlacement = printAreas[0]!['placement'] as Record<string, unknown>
+    expect(areaPlacement['fit']).toBe('contain')
+    expect(areaPlacement['rotation']).toBe(15)
+    expect(areaPlacement['coverage']).toBeUndefined()
+
+    const surfacePlacement = printAreas[1]!['placement'] as Record<string, unknown>
+    expect(surfacePlacement['coverage']).toBe(80)
+    expect(surfacePlacement['fit']).toBeUndefined()
   })
 
-  it('addresses a full-coverage product surface by surface_uuid', async () => {
+  it('addresses a product surface by surface_uuid', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
@@ -890,6 +903,8 @@ describe('ai 2D-mockup catalog', () => {
           data: {
             ...MOCK_2D_MOCKUP,
             customizable: true,
+            // Still carrying the retired `coverage`, the way a server one
+            // deploy behind would. It must not reach the caller.
             surfaces: [{
               surface_uuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
               coverage: 'full',
@@ -909,7 +924,6 @@ describe('ai 2D-mockup catalog', () => {
     expect(mockup.quads?.[0]!.name).toBe('Front')
     expect(mockup.surfaces[0]).toEqual({
       surfaceUuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-      coverage: 'full',
     })
     expect(mockup).not.toHaveProperty('maskUrl')
     expect(mockup).not.toHaveProperty('regionIndex')
