@@ -182,8 +182,9 @@ if (nextCursor) {
 
 `renders.createVideo` animates a mockup. It is always asynchronous and returns a
 `Job` of kind `'video'`. Credit cost scales with duration, audio, and the
-automatically selected quality tier; the free tier allows a single lifetime
-video. Unsupported `durationSeconds` values return a 400.
+automatically selected quality tier. Every account gets one video at no charge,
+once, for the lifetime of the account. Unsupported `durationSeconds` values
+return a 400.
 
 ```typescript
 const job = await client.renders.createVideo({
@@ -213,8 +214,14 @@ Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
 mockup catalog. `client.ai.render` posts to
 `/api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id lives in the path)
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
-`color`. Use `uuid` for a saved print area or `surfaceUuid` for a full-coverage
-surface returned by `client.ai.get()`.
+`color`. Use `uuid` for a saved print area -- a bounded zone drawn on the
+product -- or `surfaceUuid` for a product surface, both returned by
+`client.ai.get()`. A product can have both, and they are separate targets.
+Placement follows the target, and sizing has one answer per request: a surface
+takes a `coverage` percentage or an explicit `width` + `height`, a print area
+takes a `fit` or an explicit `width` + `height`. Anchoring -- `position`,
+`offsetX`, `offsetY`, `rotation` -- belongs to both. The types enforce it, so
+handing one the other's dial does not compile.
 
 #### Render an existing 2D mockup
 
@@ -306,7 +313,8 @@ const mockup = await client.ai.waitForReady(job, { intervalMs: 2_000 })
 
 Update all print areas on a ready mockup with up to 8 four-point quads (each
 with an optional `name`, **0 credits**). An empty array is accepted only when
-the API has verified every product surface as full coverage:
+the API has verified every product surface as printable; each of those is then
+a render target in its own right:
 
 ```typescript
 const updated = await client.ai.updatePrintAreas('mockup-uuid', [{
@@ -411,10 +419,48 @@ console.log(account.account.email)
 console.log(account.subscription.plan)          // plan slug
 console.log(account.subscription.tier)          // plan tier
 console.log(account.subscription.billingChannel) // 'shopify' | 'stripe' | 'none'
-console.log(account.usage.creditsRemaining)     // 950
-console.log(account.usage.creditsLimit)         // 1000
+console.log(account.usage.creditsRemaining)     // 4750
+console.log(account.usage.creditsLimit)         // 5000  (Starter 5K)
+console.log(account.usage.prepaidBalance)       // 12.5
+console.log(account.usage.prepaidBalanceCurrency) // 'USD'
 console.log(account.apiKey.totalRequests)       // 1234
 ```
+
+An account is funded either by a subscription allowance or by a prepaid balance,
+and the two are independent. `creditsLimit` is the allowance; `prepaidBalance` is
+money the account holds and spends per render. An account paying as it goes has no
+allowance, so it reports `creditsLimit: 0` and `creditsRemaining: 0` while being
+perfectly able to pay. Show only those two and a funded customer reads as `0 / 0`.
+
+```typescript
+const { usage } = await client.account.get()
+
+if (usage.creditsLimit > 0) {
+  console.log(`${usage.creditsRemaining} of ${usage.creditsLimit} credits left`)
+}
+if (usage.prepaidBalance > 0) {
+  console.log(`${usage.prepaidBalance.toFixed(2)} ${usage.prepaidBalanceCurrency} balance`)
+}
+if (usage.creditsRemaining === 0 && usage.prepaidBalance === 0) {
+  console.log('No credits or balance. Add a credit card.')
+}
+```
+
+Draw a progress bar from `creditsLimit` only. A balance is an amount, not a
+fraction, so it has no denominator to be a percentage of.
+
+### Pricing in one paragraph
+
+Pay as you go is the entry tier and needs no subscription: one PSD render costs
+$0.10, so $1 covers 10, and the minimum first payment is $5. 2D Mockups and video
+are priced by what they cost to produce, not at the flat render rate. Volume plans
+start at $25/month for 5,000 renders. A new account gets 500 credits once and no
+card is required to spend them, but until a card is verified its renders are
+watermarked and capped at 1,024 px, it can keep 5 PSD templates, and one render
+runs at a time. Funding the $5 minimum lifts every one of those: the watermark and
+the width cap come off, the stored-template limit goes to 150, and renders run 25
+at a time alongside 10 concurrent uploads. There is no separate "free plan": that
+account is on the pay-as-you-go tier, unfunded.
 
 ### Studio
 

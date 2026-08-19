@@ -3,6 +3,43 @@
 All notable changes to the SudoMock Node.js SDK are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `UsageInfo.prepaidBalance` and `UsageInfo.prepaidBalanceCurrency`, the money an
+  account holds and spends per render. An account funded this way carries no
+  subscription allowance, so its `creditsLimit` and `creditsRemaining` are
+  legitimately `0` and reading only those reported a paying customer as
+  `0 / 0 credits` with a bar stuck at 0%.
+
+### Fixed
+- `account.get()` rebuilds its result key by key, which silently dropped any
+  field not named in that map. The API had been sending the balance already; the
+  SDK discarded it before the caller ever saw it. Both fields are now mapped,
+  and coalesced to `0` and `USD` so the declared types hold against a deployment
+  that predates them.
+
+Nothing was removed or renamed.
+
+### Changed (BREAKING)
+- Placement is typed per target kind, and sizing has exactly one answer per
+  request. `AISurfacePlacement` takes a `coverage` percentage OR an explicit
+  `width` + `height`; `AIPrintAreaPlacement` takes a `fit` OR an explicit
+  `width` + `height`. Anchoring -- `position`, `offsetX`, `offsetY`, `rotation`
+  -- belongs to both. Handing a target the other kind's option, naming two
+  sizes at once, or sending one axis of a box no longer compiles, where before
+  it compiled, travelled, and came back a 422. `AIPlacement` remains as the
+  union of the two and is deprecated.
+- `surfaces` now holds one entry per printable product in the photo, not only
+  the ones covering a whole object. A product can carry both a surface and
+  saved print areas, and they are separate render targets.
+
+### Removed (BREAKING)
+- `TwoDFullSurface.coverage`. It was always the string `'full'`, so it stated
+  nothing a caller could act on while reading exactly like a dial they could
+  turn. A response still carrying it is accepted and the field dropped.
+
+
 ## [2.5.0] - 2026-08-04
 
 ### Changed (BREAKING)
