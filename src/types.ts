@@ -359,13 +359,32 @@ export interface AIAdjustments {
 }
 
 /** Where the artwork sits and how it is turned. Applies to every target. */
+/**
+ * The options every target shares.
+ *
+ * Every pixel length here is a target pixel: for a print area that is the
+ * bounding box of its own four corner points, in the pixels of the product
+ * photo the mockup was built from. It is not a fraction of anything, and
+ * `imageSize` does not change it.
+ */
 export interface AIPlacementBase {
+  /**
+   * Anchor cell within the target: `center` (default), `top_left`,
+   * `top_center`, `top_right`, `center_left`, `center_right`, `bottom_left`,
+   * `bottom_center`, `bottom_right`. `offsetX` and `offsetY` are measured from
+   * this anchor.
+   */
   position?: string
-  /** Rotation in degrees, clockwise positive (-360 to 360). */
+  /**
+   * Rotation in degrees, clockwise positive (-360 to 360), applied before the
+   * artwork is positioned. A rotated artwork occupies its rotated bounding
+   * box, so a 100x50 box sent with rotation 45 lands as a 106x106 footprint,
+   * and `width` / `height` describe the box before rotation.
+   */
   rotation?: number
-  /** Horizontal offset in pixels. */
+  /** Horizontal offset in target pixels from the anchor, positive right. */
   offsetX?: number
-  /** Vertical offset in pixels. */
+  /** Vertical offset in target pixels from the anchor, positive down. */
   offsetY?: number
 }
 
