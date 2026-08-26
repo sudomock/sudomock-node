@@ -18,7 +18,12 @@ import type {
 const DEFAULT_TOLERANCE_SECONDS = 300
 
 const ENGINE_DETAIL =
-  /gemini|advanced.?model|\bmodel\b|prompt|mask(?:_|-|\b)|segment(?:ation)?(?:_|-|\b)|region.?index|depth|displacement|grid|warp|shading|provider|pipeline|engine|internal|private|storage|bucket|config.?version|setup.?revision|edit.?generation|\bphase\b|state.?machine|(?:internal|processing|workflow).?state/i
+  new RegExp(
+  // Encoded: this package is PUBLIC on npm and the spelled-out list names
+  // every provider and pipeline concept it exists to hide.
+  Buffer.from("Z2VtaW5pfGFkdmFuY2VkLj9tb2RlbHxcYm1vZGVsXGJ8cHJvbXB0fG1hc2soPzpffC18XGIpfHNlZ21lbnQoPzphdGlvbik/KD86X3wtfFxiKXxyZWdpb24uP2luZGV4fGRlcHRofGRpc3BsYWNlbWVudHxncmlkfHdhcnB8c2hhZGluZ3xwcm92aWRlcnxwaXBlbGluZXxlbmdpbmV8aW50ZXJuYWx8cHJpdmF0ZXxzdG9yYWdlfGJ1Y2tldHxjb25maWcuP3ZlcnNpb258c2V0dXAuP3JldmlzaW9ufGVkaXQuP2dlbmVyYXRpb258XGJwaGFzZVxifHN0YXRlLj9tYWNoaW5lfCg/OmludGVybmFsfHByb2Nlc3Npbmd8d29ya2Zsb3cpLj9zdGF0ZQ==", "base64").toString(),
+  "i",
+)
 
 function toWebhookDelivery(value: WebhookDelivery): WebhookDelivery {
   return {
