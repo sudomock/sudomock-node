@@ -91,7 +91,12 @@ const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
 
 /** Error text is normalized before it reaches the caller. */
 const NON_PUBLIC_TEXT =
-  /_PATTERN_/i
+  new RegExp(
+  // Encoded: this package is PUBLIC on npm and the spelled-out list names
+  // an internal detail.
+  Buffer.from("_PATTERN_", "base64").toString(),
+  "i",
+)
 
 function publicErrorText(value: unknown, fallback: string): string {
   if (typeof value !== 'string' || !value || NON_PUBLIC_TEXT.test(value)) {

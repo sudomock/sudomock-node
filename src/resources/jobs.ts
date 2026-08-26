@@ -101,7 +101,12 @@ export function toJob(body: unknown): Job {
 }
 
 const NON_PUBLIC_TEXT =
-  /_PATTERN_/i
+  new RegExp(
+  // Encoded: this package is PUBLIC on npm and the spelled-out list names
+  // an internal detail.
+  Buffer.from("_PATTERN_", "base64").toString(),
+  "i",
+)
 
 function publicFailureText(value: string | null): string | null {
   if (!value) return value
