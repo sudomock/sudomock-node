@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { describe, it, expect, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import SudoMock from '../src/index'
+import { CLIENT_ID, HttpClient, SDK_VERSION } from '../src/client'
 import {
   SudoMockError,
   AuthenticationError,
@@ -50,6 +52,88 @@ describe('SudoMock client', () => {
     expect(client.uploads).toBeDefined()
     expect(client.account).toBeDefined()
     expect(client.studio).toBeDefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Client identity headers
+// ---------------------------------------------------------------------------
+
+describe('client identity', () => {
+  const packageVersion = (
+    JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as { version: string }
+  ).version
+
+  /** Capture the request headers of the next GET /mockups. */
+  function captureListHeaders(): () => Headers | undefined {
+    let captured: Headers | undefined
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/mockups`, ({ request }) => {
+        captured = request.headers
+        return HttpResponse.json({
+          success: true,
+          data: { mockups: [], total: 0, limit: 20, offset: 0 },
+        })
+      }),
+    )
+    return () => captured
+  }
+
+  it('reports the package.json version, not a hand-copied constant', () => {
+    expect(SDK_VERSION).toBe(packageVersion)
+    expect(CLIENT_ID).toBe(`node-sdk/${packageVersion}`)
+  })
+
+  it('sends X-SudoMock-Client and User-Agent as node-sdk/<version> on every request', async () => {
+    const headers = captureListHeaders()
+
+    await createClient().mockups.list()
+
+    expect(headers()?.get('X-SudoMock-Client')).toBe(`node-sdk/${packageVersion}`)
+    expect(headers()?.get('User-Agent')).toBe(`node-sdk/${packageVersion}`)
+  })
+
+  it('still identifies itself when the runtime refuses a User-Agent header (browser rule)', async () => {
+    const originalSet = Headers.prototype.set
+    const spy = vi
+      .spyOn(Headers.prototype, 'set')
+      .mockImplementation(function (this: Headers, name: string, value: string) {
+        if (name.toLowerCase() === 'user-agent' && value === CLIENT_ID) {
+          throw new TypeError('User-Agent is a forbidden request header')
+        }
+        return originalSet.call(this, name, value)
+      })
+    try {
+      const headers = captureListHeaders()
+
+      await createClient().mockups.list()
+
+      expect(headers()?.get('X-SudoMock-Client')).toBe(`node-sdk/${packageVersion}`)
+      expect(headers()?.get('User-Agent')).not.toBe(CLIENT_ID)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('lets a per-request header override a default, case-insensitively', async () => {
+    const headers = captureListHeaders()
+    const transport = new HttpClient({
+      apiKey: TEST_API_KEY,
+      baseUrl: TEST_BASE_URL,
+      timeout: 5_000,
+      maxRetries: 0,
+    })
+
+    await transport.request({
+      method: 'GET',
+      path: '/api/v1/mockups',
+      headers: { accept: 'application/json; charset=utf-8' },
+    })
+
+    expect(headers()?.get('Accept')).toBe('application/json; charset=utf-8')
+    expect(headers()?.get('X-SudoMock-Client')).toBe(CLIENT_ID)
   })
 })
 
