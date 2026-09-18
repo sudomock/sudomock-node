@@ -521,8 +521,9 @@ export interface AIRenderParams {
    * When `true`, the API enqueues the render and immediately returns a
    * {@link Job} of kind `'2d_render'` (HTTP 202) instead of blocking until the
    * render completes. Poll the job with `client.jobs.retrieve(job.jobId)` or
-   * `client.jobs.waitForJob(job.jobId)`; a `2d_render.succeeded` /
-   * `2d_render.failed` webhook also fires.
+   * `client.jobs.waitForJob(job.jobId)`; a `photo_mockup_render.succeeded` /
+   * `photo_mockup_render.failed` webhook also fires (`2d_render.succeeded` /
+   * `2d_render.failed` on an endpoint that keeps the legacy event names).
    *
    * Default: `false` (synchronous, returns an {@link AIRenderResult}).
    */
@@ -578,7 +579,8 @@ export type Create2DMockupParams = {
 /** Accepted 2D-mockup creation job. */
 export interface Create2DMockupResult {
   jobId: string
-  kind: '2d_create'
+  /** `'2d_create'` from `client.ai`; `'photo_mockup_create'` when submitted on `/api/v1/photo-mockups`. */
+  kind: '2d_create' | 'photo_mockup_create'
   status: 'queued'
   statusUrl: string
 }
@@ -760,8 +762,23 @@ export interface UploadResult {
 // Jobs (async renders / videos / uploads / 2D creation)
 // ---------------------------------------------------------------------------
 
-/** The kind of work a job performs. */
-export type JobKind = 'render' | 'video' | 'upload' | '2d_create' | '2d_render'
+/**
+ * The kind of work a job performs.
+ *
+ * A photo-mockup job has two spellings: `'photo_mockup_create'` /
+ * `'photo_mockup_render'` when submitted on `/api/v1/photo-mockups`, and
+ * `'2d_create'` / `'2d_render'` when submitted on `/api/v1/sudoai/2d-mockups`
+ * (the path `client.ai` posts to). Filtering {@link JobsResource.list} by
+ * either spelling returns both.
+ */
+export type JobKind =
+  | 'render'
+  | 'video'
+  | 'upload'
+  | '2d_create'
+  | '2d_render'
+  | 'photo_mockup_create'
+  | 'photo_mockup_render'
 
 /**
  * Terminal and in-flight statuses for an async job (the API field is `status`).
@@ -946,7 +963,15 @@ export interface VideoWebhookOverride {
 // Webhook endpoints
 // ---------------------------------------------------------------------------
 
-/** Event types a webhook endpoint can subscribe to. */
+/**
+ * Event types a webhook endpoint can subscribe to.
+ *
+ * Photo-mockup events have two spellings, and an endpoint receives the one it
+ * is pinned to: `photo_mockup.*` / `photo_mockup_render.*` on an endpoint
+ * created with the current names, `2d_mockup.*` / `2d_render.*` on an endpoint
+ * that keeps the legacy names. Subscribe with either spelling; the delivery
+ * carries the endpoint's own.
+ */
 export type WebhookEvent =
   | 'render.succeeded'
   | 'render.failed'
@@ -958,6 +983,11 @@ export type WebhookEvent =
   | '2d_mockup.failed'
   | '2d_render.succeeded'
   | '2d_render.failed'
+  | 'photo_mockup.ready'
+  | 'photo_mockup.rejected'
+  | 'photo_mockup.failed'
+  | 'photo_mockup_render.succeeded'
+  | 'photo_mockup_render.failed'
   | 'webhook.test'
   | (string & {})
 
