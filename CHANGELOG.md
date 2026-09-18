@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-09-18
+
 ### Added
 - Every request now carries `X-SudoMock-Client: node-sdk/<version>`, and the
   same value as `User-Agent` wherever the runtime lets a script set one. The
