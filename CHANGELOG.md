@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-09-18
+
 ### Added
 - `JobKind` gains `photo_mockup_create` and `photo_mockup_render`, the names a
   photo-mockup job carries when submitted on `/api/v1/photo-mockups`. A job
