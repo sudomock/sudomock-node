@@ -50,6 +50,7 @@ function toWebhookEndpoint(value: WebhookEndpoint): WebhookEndpoint {
     secret: value.secret,
     description: value.description,
     eventTypes: value.eventTypes,
+    eventNaming: value.eventNaming,
     enabled: value.enabled,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
@@ -108,14 +109,15 @@ export class WebhooksResource {
         url: params.url,
         eventTypes: params.eventTypes ?? [],
         description: params.description,
+        eventNaming: params.eventNaming,
       },
     })
     return toWebhookEndpoint(endpoint)
   }
 
   /**
-   * Update a webhook endpoint (URL, subscribed event types, description, or
-   * enabled state).
+   * Update a webhook endpoint (URL, subscribed event types, description,
+   * enabled state, or the event-name spelling it is pinned to).
    */
   async update(
     id: string,
@@ -129,6 +131,7 @@ export class WebhooksResource {
         eventTypes: params.eventTypes,
         description: params.description,
         enabled: params.enabled,
+        eventNaming: params.eventNaming,
       },
     })
     return toWebhookEndpoint(endpoint)
