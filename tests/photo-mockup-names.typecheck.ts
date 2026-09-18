@@ -6,9 +6,13 @@
 // (`string extends T` holds for the hatch and for no literal member).
 import type {
   Create2DMockupResult,
+  CreateWebhookEndpointParams,
   JobKind,
   ListJobsParams,
+  UpdateWebhookEndpointParams,
+  WebhookEndpoint,
   WebhookEvent,
+  WebhookEventNaming,
 } from '../src/index'
 
 type StripEscapeHatch<T> = T extends unknown
@@ -55,3 +59,25 @@ export const legacyEvents: NamedWebhookEvent[] = [
   '2d_render.succeeded',
   '2d_render.failed',
 ]
+
+// An endpoint pins the spelling it was built against.
+export const pinnedCurrent: WebhookEventNaming = 'current'
+export const pinnedLegacy: WebhookEventNaming = 'legacy'
+export const createPinnedCurrent: CreateWebhookEndpointParams = {
+  url: 'https://example.com/hooks/sudomock',
+  eventTypes: ['photo_mockup_render.succeeded'],
+  eventNaming: 'current',
+}
+export const createPinnedLegacy: CreateWebhookEndpointParams = {
+  url: 'https://example.com/hooks/sudomock',
+  eventTypes: ['2d_render.succeeded'],
+  eventNaming: 'legacy',
+}
+export const repin: UpdateWebhookEndpointParams = { eventNaming: 'current' }
+export const endpoint: WebhookEndpoint = {
+  id: '77777777-7777-7777-7777-777777777777',
+  url: 'https://example.com/hooks/sudomock',
+  eventTypes: [],
+  eventNaming: 'legacy',
+  enabled: true,
+}

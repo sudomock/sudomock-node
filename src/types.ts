@@ -967,10 +967,10 @@ export interface VideoWebhookOverride {
  * Event types a webhook endpoint can subscribe to.
  *
  * Photo-mockup events have two spellings, and an endpoint receives the one it
- * is pinned to: `photo_mockup.*` / `photo_mockup_render.*` on an endpoint
- * created with the current names, `2d_mockup.*` / `2d_render.*` on an endpoint
- * that keeps the legacy names. Subscribe with either spelling; the delivery
- * carries the endpoint's own.
+ * is pinned to ({@link WebhookEndpoint.eventNaming}): `photo_mockup.*` /
+ * `photo_mockup_render.*` on a `'current'` endpoint, `2d_mockup.*` /
+ * `2d_render.*` on a `'legacy'` one. Subscribe with either spelling; the
+ * delivery carries the endpoint's own.
  */
 export type WebhookEvent =
   | 'render.succeeded'
@@ -991,6 +991,19 @@ export type WebhookEvent =
   | 'webhook.test'
   | (string & {})
 
+/**
+ * Which spelling of the photo-mockup events an endpoint receives.
+ *
+ * - `'current'` -- `photo_mockup.*` / `photo_mockup_render.*`; the payload's
+ *   `kind` is `photo_mockup_create` / `photo_mockup_render`.
+ * - `'legacy'`  -- `2d_mockup.*` / `2d_render.*`; the payload's `kind` is
+ *   `2d_create` / `2d_render`.
+ *
+ * A new endpoint is pinned to `'current'` unless created otherwise; an endpoint
+ * that predates the current names stays on `'legacy'` until re-pinned.
+ */
+export type WebhookEventNaming = 'legacy' | 'current'
+
 export interface WebhookEndpoint {
   /** Endpoint identifier (API field: `id`). */
   id: string
@@ -1005,6 +1018,11 @@ export interface WebhookEndpoint {
   description?: string | null
   /** Subscribed event types (empty array = subscribe to all events). */
   eventTypes: WebhookEvent[]
+  /**
+   * The event-name spelling this endpoint is pinned to (API field:
+   * `event_naming`). Absent on a deployment that predates the field.
+   */
+  eventNaming?: WebhookEventNaming
   /** Whether the endpoint is currently active. */
   enabled: boolean
   createdAt?: string
@@ -1021,6 +1039,12 @@ export interface CreateWebhookEndpointParams {
   eventTypes?: WebhookEvent[]
   /** Optional description. */
   description?: string
+  /**
+   * Which spelling of the photo-mockup events this endpoint receives. Omit to
+   * take the API default (`'current'`); pass `'legacy'` for a handler that
+   * still expects `2d_mockup.*` / `2d_render.*`.
+   */
+  eventNaming?: WebhookEventNaming
 }
 
 export interface UpdateWebhookEndpointParams {
@@ -1028,6 +1052,8 @@ export interface UpdateWebhookEndpointParams {
   eventTypes?: WebhookEvent[]
   description?: string
   enabled?: boolean
+  /** Re-pin the endpoint once its handler is ready for the other spelling. */
+  eventNaming?: WebhookEventNaming
 }
 
 /** A single delivery-attempt log row. */

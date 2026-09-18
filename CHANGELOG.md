@@ -16,6 +16,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `photo_mockup_render.failed`. An endpoint receives the spelling it is pinned
   to; an endpoint created before this release keeps the `2d_mockup.*` /
   `2d_render.*` names.
+- `WebhookEndpoint.eventNaming` (`'legacy' | 'current'`) reports that pin, and
+  `webhooks.create` / `webhooks.update` accept `eventNaming` to choose or
+  change it. Omitted on create, the API pins a new endpoint to `'current'`.
 
 ## [2.5.1] - 2026-09-18
 

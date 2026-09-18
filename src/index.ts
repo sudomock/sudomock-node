@@ -183,6 +183,7 @@ export type {
   CreateVideoParams,
   VideoWebhookOverride,
   WebhookEvent,
+  WebhookEventNaming,
   WebhookEndpoint,
   CreateWebhookEndpointParams,
   UpdateWebhookEndpointParams,
