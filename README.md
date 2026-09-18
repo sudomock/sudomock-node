@@ -171,7 +171,11 @@ console.log(done.resultUrl)
 It throws `TimeoutError` only when the job is still running past `timeoutMs`.
 
 List and page your jobs (keyset pagination, newest first). Filter by `kind`
-(`render` | `video` | `upload` | `2d_create`) and/or `mockupUuid`:
+(`render` | `video` | `upload` | `2d_create` | `2d_render` |
+`photo_mockup_create` | `photo_mockup_render`) and/or `mockupUuid`. A
+photo-mockup job is spelled `photo_mockup_*` when submitted on
+`/api/v1/photo-mockups` and `2d_*` when submitted through `client.ai`; filtering
+by either spelling returns both:
 
 ```typescript
 const { jobs, nextCursor } = await client.jobs.list({ kind: 'video', limit: 50 })
@@ -246,8 +250,9 @@ console.log(result.printFiles[0].exportFormat) // 'webp'
 
 Prefer to render in the background? Pass `isAsync: true` and `render()` resolves
 with a `Job` of kind `'2d_render'` (`202 Accepted`) you await with
-`jobs.waitForJob`. A `2d_render.succeeded` / `2d_render.failed` webhook also
-fires.
+`jobs.waitForJob`. A `photo_mockup_render.succeeded` /
+`photo_mockup_render.failed` webhook also fires (`2d_render.succeeded` /
+`2d_render.failed` on an endpoint that keeps the legacy event names).
 
 ```typescript
 const job = await client.ai.render({
@@ -539,6 +544,25 @@ await client.webhooks.replayFailed(endpoint.id)               // bulk replay all
 
 // Cross-endpoint Events feed (recent deliveries across every endpoint):
 const events = await client.webhooks.listEvents({ status: 'failed', limit: 100 })
+```
+
+Photo-mockup events are `photo_mockup.ready` / `photo_mockup.rejected` /
+`photo_mockup.failed` and `photo_mockup_render.succeeded` /
+`photo_mockup_render.failed`. Each endpoint is pinned to one spelling
+(`eventNaming`): a new endpoint receives these names; an endpoint created
+before they existed keeps receiving `2d_mockup.*` / `2d_render.*` until you
+re-pin it. Subscribe with either spelling and the delivery carries the
+endpoint's own.
+
+```typescript
+// A handler that still expects the legacy names:
+await client.webhooks.create({
+  url: 'https://example.com/hooks/sudomock',
+  eventTypes: ['2d_render.succeeded'],
+  eventNaming: 'legacy',
+})
+// Move an older endpoint to the current names once its handler is ready:
+await client.webhooks.update(endpoint.id, { eventNaming: 'current' })
 ```
 
 #### Verifying signatures

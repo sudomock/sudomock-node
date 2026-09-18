@@ -521,8 +521,9 @@ export interface AIRenderParams {
    * When `true`, the API enqueues the render and immediately returns a
    * {@link Job} of kind `'2d_render'` (HTTP 202) instead of blocking until the
    * render completes. Poll the job with `client.jobs.retrieve(job.jobId)` or
-   * `client.jobs.waitForJob(job.jobId)`; a `2d_render.succeeded` /
-   * `2d_render.failed` webhook also fires.
+   * `client.jobs.waitForJob(job.jobId)`; a `photo_mockup_render.succeeded` /
+   * `photo_mockup_render.failed` webhook also fires (`2d_render.succeeded` /
+   * `2d_render.failed` on an endpoint that keeps the legacy event names).
    *
    * Default: `false` (synchronous, returns an {@link AIRenderResult}).
    */
@@ -578,7 +579,8 @@ export type Create2DMockupParams = {
 /** Accepted 2D-mockup creation job. */
 export interface Create2DMockupResult {
   jobId: string
-  kind: '2d_create'
+  /** `'2d_create'` from `client.ai`; `'photo_mockup_create'` when submitted on `/api/v1/photo-mockups`. */
+  kind: '2d_create' | 'photo_mockup_create'
   status: 'queued'
   statusUrl: string
 }
@@ -760,8 +762,23 @@ export interface UploadResult {
 // Jobs (async renders / videos / uploads / 2D creation)
 // ---------------------------------------------------------------------------
 
-/** The kind of work a job performs. */
-export type JobKind = 'render' | 'video' | 'upload' | '2d_create' | '2d_render'
+/**
+ * The kind of work a job performs.
+ *
+ * A photo-mockup job has two spellings: `'photo_mockup_create'` /
+ * `'photo_mockup_render'` when submitted on `/api/v1/photo-mockups`, and
+ * `'2d_create'` / `'2d_render'` when submitted on `/api/v1/sudoai/2d-mockups`
+ * (the path `client.ai` posts to). Filtering {@link JobsResource.list} by
+ * either spelling returns both.
+ */
+export type JobKind =
+  | 'render'
+  | 'video'
+  | 'upload'
+  | '2d_create'
+  | '2d_render'
+  | 'photo_mockup_create'
+  | 'photo_mockup_render'
 
 /**
  * Terminal and in-flight statuses for an async job (the API field is `status`).
@@ -946,7 +963,15 @@ export interface VideoWebhookOverride {
 // Webhook endpoints
 // ---------------------------------------------------------------------------
 
-/** Event types a webhook endpoint can subscribe to. */
+/**
+ * Event types a webhook endpoint can subscribe to.
+ *
+ * Photo-mockup events have two spellings, and an endpoint receives the one it
+ * is pinned to ({@link WebhookEndpoint.eventNaming}): `photo_mockup.*` /
+ * `photo_mockup_render.*` on a `'current'` endpoint, `2d_mockup.*` /
+ * `2d_render.*` on a `'legacy'` one. Subscribe with either spelling; the
+ * delivery carries the endpoint's own.
+ */
 export type WebhookEvent =
   | 'render.succeeded'
   | 'render.failed'
@@ -958,8 +983,26 @@ export type WebhookEvent =
   | '2d_mockup.failed'
   | '2d_render.succeeded'
   | '2d_render.failed'
+  | 'photo_mockup.ready'
+  | 'photo_mockup.rejected'
+  | 'photo_mockup.failed'
+  | 'photo_mockup_render.succeeded'
+  | 'photo_mockup_render.failed'
   | 'webhook.test'
   | (string & {})
+
+/**
+ * Which spelling of the photo-mockup events an endpoint receives.
+ *
+ * - `'current'` -- `photo_mockup.*` / `photo_mockup_render.*`; the payload's
+ *   `kind` is `photo_mockup_create` / `photo_mockup_render`.
+ * - `'legacy'`  -- `2d_mockup.*` / `2d_render.*`; the payload's `kind` is
+ *   `2d_create` / `2d_render`.
+ *
+ * A new endpoint is pinned to `'current'` unless created otherwise; an endpoint
+ * that predates the current names stays on `'legacy'` until re-pinned.
+ */
+export type WebhookEventNaming = 'legacy' | 'current'
 
 export interface WebhookEndpoint {
   /** Endpoint identifier (API field: `id`). */
@@ -975,6 +1018,11 @@ export interface WebhookEndpoint {
   description?: string | null
   /** Subscribed event types (empty array = subscribe to all events). */
   eventTypes: WebhookEvent[]
+  /**
+   * The event-name spelling this endpoint is pinned to (API field:
+   * `event_naming`). Absent on a deployment that predates the field.
+   */
+  eventNaming?: WebhookEventNaming
   /** Whether the endpoint is currently active. */
   enabled: boolean
   createdAt?: string
@@ -991,6 +1039,12 @@ export interface CreateWebhookEndpointParams {
   eventTypes?: WebhookEvent[]
   /** Optional description. */
   description?: string
+  /**
+   * Which spelling of the photo-mockup events this endpoint receives. Omit to
+   * take the API default (`'current'`); pass `'legacy'` for a handler that
+   * still expects `2d_mockup.*` / `2d_render.*`.
+   */
+  eventNaming?: WebhookEventNaming
 }
 
 export interface UpdateWebhookEndpointParams {
@@ -998,6 +1052,8 @@ export interface UpdateWebhookEndpointParams {
   eventTypes?: WebhookEvent[]
   description?: string
   enabled?: boolean
+  /** Re-pin the endpoint once its handler is ready for the other spelling. */
+  eventNaming?: WebhookEventNaming
 }
 
 /** A single delivery-attempt log row. */
