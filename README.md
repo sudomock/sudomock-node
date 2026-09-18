@@ -50,6 +50,8 @@ const client = new SudoMock('sm_xxx', {
 
 The API key can be passed as the first argument or via the `SUDOMOCK_API_KEY` environment variable.
 
+Every request identifies itself with `X-SudoMock-Client: node-sdk/<version>` (and the same value as `User-Agent` where the runtime allows it), so you can pick the SDK's traffic out of your own logs and proxy rules.
+
 ### Mockups
 
 ```typescript
