@@ -5,6 +5,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `JobKind` gains `photo_mockup_create` and `photo_mockup_render`, the names a
+  photo-mockup job carries when submitted on `/api/v1/photo-mockups`. A job
+  submitted through `client.ai` keeps `2d_create` / `2d_render`; both spellings
+  are typed, and `jobs.list({ kind })` with either returns both.
+  `Create2DMockupResult.kind` admits both spellings.
+- `WebhookEvent` gains `photo_mockup.ready`, `photo_mockup.rejected`,
+  `photo_mockup.failed`, `photo_mockup_render.succeeded` and
+  `photo_mockup_render.failed`. An endpoint receives the spelling it is pinned
+  to; an endpoint created before this release keeps the `2d_mockup.*` /
+  `2d_render.*` names.
+
 ## [2.5.1] - 2026-09-18
 
 ### Added
