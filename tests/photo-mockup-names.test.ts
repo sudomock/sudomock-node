@@ -12,6 +12,7 @@ function createClient() {
   return new SudoMock(TEST_API_KEY, { baseUrl: TEST_BASE_URL })
 }
 
+const EP_ID = '77777777-7777-7777-7777-777777777777'
 const JOB_ID = '99999999-9999-4999-8999-999999999999'
 
 describe('photo-mockup job kinds', () => {
@@ -129,12 +130,110 @@ describe('photo-mockup webhook events', () => {
       ),
     )
 
-    await createClient().webhooks.listDeliveries(
-      '77777777-7777-7777-7777-777777777777',
-      { eventType: 'photo_mockup_render.failed' },
-    )
+    await createClient().webhooks.listDeliveries(EP_ID, {
+      eventType: 'photo_mockup_render.failed',
+    })
     expect(new URL(capturedUrl).searchParams.get('event_type')).toBe(
       'photo_mockup_render.failed',
     )
+  })
+})
+
+describe('webhook endpoint event naming', () => {
+  it('pins a new endpoint to the current names', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(
+            { ...MOCK_WEBHOOK_ENDPOINT, event_naming: 'current' },
+            { status: 201 },
+          )
+        },
+      ),
+    )
+
+    const ep = await createClient().webhooks.create({
+      url: 'https://example.com/hooks/sudomock',
+      eventTypes: ['photo_mockup_render.succeeded'],
+      eventNaming: 'current',
+    })
+    // SDK sends the API field name `event_naming` (snake_cased from eventNaming).
+    expect(capturedBody['event_naming']).toBe('current')
+    expect(ep.eventNaming).toBe('current')
+  })
+
+  it('leaves the naming to the API default when not given', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json(
+            { ...MOCK_WEBHOOK_ENDPOINT, event_naming: 'current' },
+            { status: 201 },
+          )
+        },
+      ),
+    )
+
+    await createClient().webhooks.create({
+      url: 'https://example.com/hooks/sudomock',
+    })
+    expect(capturedBody).not.toHaveProperty('event_naming')
+  })
+
+  it('reads the pinned naming back on list and retrieve', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/webhook-endpoints`, () =>
+        HttpResponse.json([{ ...MOCK_WEBHOOK_ENDPOINT, event_naming: 'legacy' }]),
+      ),
+      http.get(`${TEST_BASE_URL}/api/v1/webhook-endpoints/:id`, () =>
+        HttpResponse.json({ ...MOCK_WEBHOOK_ENDPOINT, event_naming: 'legacy' }),
+      ),
+    )
+
+    const client = createClient()
+    const [listed] = await client.webhooks.list()
+    expect(listed!.eventNaming).toBe('legacy')
+    expect(listed).not.toHaveProperty('privateEndpointState')
+    const retrieved = await client.webhooks.retrieve(EP_ID)
+    expect(retrieved.eventNaming).toBe('legacy')
+  })
+
+  it('leaves eventNaming undefined on a response that predates it', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/webhook-endpoints/:id`, () =>
+        HttpResponse.json(MOCK_WEBHOOK_ENDPOINT),
+      ),
+    )
+
+    const ep = await createClient().webhooks.retrieve(EP_ID)
+    expect(ep.eventNaming).toBeUndefined()
+  })
+
+  it('re-pins an endpoint to the current names on update', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.patch(
+        `${TEST_BASE_URL}/api/v1/webhook-endpoints/:id`,
+        async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            ...MOCK_WEBHOOK_ENDPOINT,
+            event_naming: 'current',
+          })
+        },
+      ),
+    )
+
+    const ep = await createClient().webhooks.update(EP_ID, {
+      eventNaming: 'current',
+    })
+    expect(capturedBody['event_naming']).toBe('current')
+    expect(ep.eventNaming).toBe('current')
   })
 })

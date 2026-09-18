@@ -548,9 +548,22 @@ const events = await client.webhooks.listEvents({ status: 'failed', limit: 100 }
 
 Photo-mockup events are `photo_mockup.ready` / `photo_mockup.rejected` /
 `photo_mockup.failed` and `photo_mockup_render.succeeded` /
-`photo_mockup_render.failed`. An endpoint created before these names existed
-keeps receiving them as `2d_mockup.*` / `2d_render.*`; subscribe with either
-spelling and the delivery carries the endpoint's own.
+`photo_mockup_render.failed`. Each endpoint is pinned to one spelling
+(`eventNaming`): a new endpoint receives these names; an endpoint created
+before they existed keeps receiving `2d_mockup.*` / `2d_render.*` until you
+re-pin it. Subscribe with either spelling and the delivery carries the
+endpoint's own.
+
+```typescript
+// A handler that still expects the legacy names:
+await client.webhooks.create({
+  url: 'https://example.com/hooks/sudomock',
+  eventTypes: ['2d_render.succeeded'],
+  eventNaming: 'legacy',
+})
+// Move an older endpoint to the current names once its handler is ready:
+await client.webhooks.update(endpoint.id, { eventNaming: 'current' })
+```
 
 #### Verifying signatures
 
