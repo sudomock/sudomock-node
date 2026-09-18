@@ -80,8 +80,21 @@ export interface ClientConfig {
   maxRetries: number
 }
 
-/** SDK version, surfaced in the User-Agent header. Keep in sync with package.json. */
-const SDK_VERSION = '2.3.0'
+/**
+ * Injected from package.json by tsup (build) and vitest (test), so the value
+ * can never lag behind the published version. Falls back when the source is
+ * run without either, e.g. through a plain TypeScript loader.
+ */
+declare const __SDK_VERSION__: string
+export const SDK_VERSION: string =
+  typeof __SDK_VERSION__ === 'string' ? __SDK_VERSION__ : '0.0.0-dev'
+
+/**
+ * How this SDK introduces itself to the API. Sent as `X-SudoMock-Client` on
+ * every request, and as `User-Agent` wherever the runtime lets a script set
+ * one (browsers reserve `User-Agent` and drop it silently).
+ */
+export const CLIENT_ID = `node-sdk/${SDK_VERSION}`
 
 /** Initial backoff in ms for exponential retry */
 const INITIAL_BACKOFF_MS = 500
@@ -262,12 +275,21 @@ export class HttpClient {
     options: RequestOptions,
     timeout: number,
   ): Promise<Response> {
-    const headers: Record<string, string> = {
+    const headers = new Headers({
       'x-api-key': this.config.apiKey,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'User-Agent': `sudomock-node/${SDK_VERSION}`,
-      ...options.headers,
+      'X-SudoMock-Client': CLIENT_ID,
+    })
+    try {
+      headers.set('User-Agent', CLIENT_ID)
+    } catch {
+      // A runtime that refuses to let scripts set User-Agent (the browser rule)
+      // may throw instead of dropping it. The request is still identified by
+      // X-SudoMock-Client above, so the header is a courtesy, not a requirement.
+    }
+    for (const [name, value] of Object.entries(options.headers ?? {})) {
+      headers.set(name, value)
     }
 
     const init: RequestInit = {
