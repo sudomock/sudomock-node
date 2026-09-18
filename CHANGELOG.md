@@ -6,6 +6,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Every request now carries `X-SudoMock-Client: node-sdk/<version>`, and the
+  same value as `User-Agent` wherever the runtime lets a script set one. The
+  API can tell this SDK's traffic, and its exact version, apart from every
+  other client. Browsers reserve `User-Agent` and drop it; the request is still
+  identified by `X-SudoMock-Client`.
 - `UsageInfo.prepaidBalance` and `UsageInfo.prepaidBalanceCurrency`, the money an
   account holds and spends per render. An account funded this way carries no
   subscription allowance, so its `creditsLimit` and `creditsRemaining` are
@@ -13,6 +18,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `0 / 0 credits` with a bar stuck at 0%.
 
 ### Fixed
+- The version in `User-Agent` had been a hand-copied constant and reported
+  `2.3.0` through the 2.4.0 and 2.5.0 releases. It is now read from
+  `package.json` at build time, so it cannot lag behind the published version.
 - `account.get()` rebuilds its result key by key, which silently dropped any
   field not named in that map. The API had been sending the balance already; the
   SDK discarded it before the caller ever saw it. Both fields are now mapped,
@@ -20,6 +28,10 @@ project adheres to [Semantic Versioning](https://semver.org/).
   that predates them.
 
 Nothing was removed or renamed.
+
+### Changed
+- The `User-Agent` prefix is `node-sdk/` (was `sudomock-node/`), matching the
+  `X-SudoMock-Client` value byte for byte.
 
 ### Changed (BREAKING)
 - Placement is typed per target kind, and sizing has exactly one answer per
