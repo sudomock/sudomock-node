@@ -11,7 +11,7 @@ function createClient() {
 describe('mockups.list()', () => {
   it('returns mockups array with total count', async () => {
     const client = createClient()
-    const result = await client.mockups.list()
+    const result = await client.psdMockups.list()
 
     expect(result.mockups).toHaveLength(1)
     expect(result.total).toBe(1)
@@ -21,7 +21,7 @@ describe('mockups.list()', () => {
 
   it('returns camelCase smart object fields', async () => {
     const client = createClient()
-    const result = await client.mockups.list()
+    const result = await client.psdMockups.list()
     const mockup = result.mockups[0]!
 
     expect(mockup.uuid).toBe(MOCK_MOCKUP.uuid)
@@ -40,7 +40,7 @@ describe('mockups.list()', () => {
   it('passes query params correctly', async () => {
     let capturedUrl = ''
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/mockups`, ({ request }) => {
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, ({ request }) => {
         capturedUrl = request.url
         return HttpResponse.json({
           success: true,
@@ -50,7 +50,7 @@ describe('mockups.list()', () => {
     )
 
     const client = createClient()
-    await client.mockups.list({
+    await client.psdMockups.list({
       limit: 10,
       offset: 5,
       name: 'shirt',
@@ -70,7 +70,7 @@ describe('mockups.list()', () => {
 describe('mockups.get()', () => {
   it('returns a single mockup', async () => {
     const client = createClient()
-    const mockup = await client.mockups.get(MOCK_MOCKUP.uuid)
+    const mockup = await client.psdMockups.get(MOCK_MOCKUP.uuid)
 
     expect(mockup.uuid).toBe(MOCK_MOCKUP.uuid)
     expect(mockup.width).toBe(4000)
@@ -81,7 +81,7 @@ describe('mockups.get()', () => {
 
   it('throws NotFoundError for missing mockup', async () => {
     const client = createClient()
-    await expect(client.mockups.get('not-found-uuid')).rejects.toThrow(
+    await expect(client.psdMockups.get('not-found-uuid')).rejects.toThrow(
       NotFoundError,
     )
   })
@@ -90,7 +90,7 @@ describe('mockups.get()', () => {
 describe('mockups.update()', () => {
   it('updates mockup name', async () => {
     const client = createClient()
-    const result = await client.mockups.update(MOCK_MOCKUP.uuid, {
+    const result = await client.psdMockups.update(MOCK_MOCKUP.uuid, {
       name: 'Updated Mockup',
     })
 
@@ -102,6 +102,6 @@ describe('mockups.delete()', () => {
   it('deletes a mockup (204 response)', async () => {
     const client = createClient()
     // Should not throw
-    await client.mockups.delete(MOCK_MOCKUP.uuid)
+    await client.psdMockups.delete(MOCK_MOCKUP.uuid)
   })
 })

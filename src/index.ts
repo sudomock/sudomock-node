@@ -1,3 +1,4 @@
+import { deprecate } from 'node:util'
 import { HttpClient } from './client'
 import { SudoMockError } from './errors'
 import { MockupsResource } from './resources/mockups'
@@ -15,6 +16,17 @@ const DEFAULT_BASE_URL = 'https://api.sudomock.com'
 const DEFAULT_TIMEOUT = 30_000
 const DEFAULT_MAX_RETRIES = 2
 
+// Earlier accessor names. Each warns once per process, then behaves exactly
+// like the name it stands for.
+const warnAi = deprecate(
+  () => {},
+  'client.ai is deprecated, use client.photoMockups (the same object).',
+)
+const warnMockups = deprecate(
+  () => {},
+  'client.mockups is deprecated, use client.psdMockups (the same object).',
+)
+
 /**
  * SudoMock API client.
  *
@@ -25,7 +37,7 @@ const DEFAULT_MAX_RETRIES = 2
  * const client = new SudoMock('sm_xxx')
  *
  * // List mockups
- * const { mockups } = await client.mockups.list()
+ * const { mockups } = await client.psdMockups.list()
  *
  * // Render
  * const render = await client.renders.create({
@@ -39,12 +51,12 @@ const DEFAULT_MAX_RETRIES = 2
  * ```
  */
 class SudoMock {
-  /** Mockup CRUD operations */
-  readonly mockups: MockupsResource
+  /** PSD mockups: list, inspect, rename and delete uploaded templates */
+  readonly psdMockups: MockupsResource
   /** Render mockups with artwork */
   readonly renders: RendersResource
-  /** Create and render reusable 2D mockups */
-  readonly ai: AIResource
+  /** Photo mockups: create reusable mockups from product photos and render onto them */
+  readonly photoMockups: AIResource
   /** Standalone image operations (background removal) */
   readonly images: ImagesResource
   /** Upload PSD files */
@@ -53,7 +65,7 @@ class SudoMock {
   readonly account: AccountResource
   /** Studio session management */
   readonly studio: StudioResource
-  /** Poll async render, video, upload, and 2D-creation jobs */
+  /** Poll async render, video, upload, and photo-mockup jobs */
   readonly jobs: JobsResource
   /** Manage webhook endpoints and their deliveries */
   readonly webhooks: WebhooksResource
@@ -74,15 +86,27 @@ class SudoMock {
       maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES,
     })
 
-    this.mockups = new MockupsResource(client)
+    this.psdMockups = new MockupsResource(client)
     this.renders = new RendersResource(client)
-    this.ai = new AIResource(client)
+    this.photoMockups = new AIResource(client)
     this.images = new ImagesResource(client)
     this.uploads = new UploadsResource(client)
     this.account = new AccountResource(client)
     this.studio = new StudioResource(client)
     this.jobs = new JobsResource(client)
     this.webhooks = new WebhooksResource(client)
+  }
+
+  /** @deprecated Earlier name of {@link SudoMock.psdMockups}. The same object; warns once per process. */
+  get mockups(): MockupsResource {
+    warnMockups()
+    return this.psdMockups
+  }
+
+  /** @deprecated Earlier name of {@link SudoMock.photoMockups}. The same object; warns once per process. */
+  get ai(): AIResource {
+    warnAi()
+    return this.photoMockups
   }
 }
 
@@ -154,6 +178,23 @@ export type {
   TwoDMockupQuad,
   TwoDMockupListResult,
   List2dMockupsParams,
+  PhotoMockup,
+  PhotoMockupDetails,
+  PhotoMockupQuad,
+  PhotoMockupSurface,
+  PhotoMockupPrintAreaInput,
+  PhotoMockupListResult,
+  ListPhotoMockupsParams,
+  CreatePhotoMockupParams,
+  CreatePhotoMockupResult,
+  WaitForPhotoMockupOptions,
+  UpdatePhotoMockupPrintAreasResult,
+  PhotoMockupRenderParams,
+  PhotoMockupRenderResult,
+  PhotoMockupPrintArea,
+  PhotoMockupPrintFile,
+  PhotoMockupAdjustments,
+  PhotoMockupPlacement,
   RemoveBackgroundParams,
   RemoveBackgroundResult,
   UploadParams,

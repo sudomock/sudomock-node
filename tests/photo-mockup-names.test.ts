@@ -55,7 +55,7 @@ describe('photo-mockup job kinds', () => {
 
   it('returns the 202 create job under its family kind', async () => {
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, () =>
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, () =>
         HttpResponse.json(
           {
             job_id: JOB_ID,
@@ -68,7 +68,7 @@ describe('photo-mockup job kinds', () => {
       ),
     )
 
-    const job = await createClient().ai.create({
+    const job = await createClient().photoMockups.create({
       sourceUrl: 'https://example.com/product.jpg',
       isAsync: true,
     })

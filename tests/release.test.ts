@@ -66,6 +66,10 @@ const SHIPPED_ON_THE_WIRE = [
   'eventNaming',
   'photo_mockup_create',
   'photo_mockup.ready',
+  'photoMockups',
+  'psdMockups',
+  '/api/v1/photo-mockups',
+  '/api/v1/psd-mockups',
 ] as const
 
 describe('release consistency', () => {
