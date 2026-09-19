@@ -145,8 +145,17 @@ function wirePlacement(
  * manage that catalog. Creation costs 25 credits. Rendering costs 5 credits
  * per call.
  */
+/** Path the photo-mockup family is served on. */
+export const PHOTO_MOCKUPS_PATH = '/api/v1/photo-mockups'
+/** Path `client.ai` was published on; it still answers, with the job kinds and
+ * event names a caller pinned to that accessor already branches on. */
+export const EARLIER_PHOTO_MOCKUPS_PATH = '/api/v1/sudoai/2d-mockups'
+
 export class AIResource {
-  constructor(private readonly client: HttpClient) {}
+  constructor(
+    private readonly client: HttpClient,
+    private readonly basePath: string = PHOTO_MOCKUPS_PATH,
+  ) {}
 
   /**
    * Create a reusable 2D mockup from a public URL or base64 image.
@@ -211,7 +220,7 @@ export class AIResource {
       TwoDMockupDetails | Job
     >({
       method: 'POST',
-      path: '/api/v1/photo-mockups',
+      path: this.basePath,
       body,
       headers: { 'Idempotency-Key': idempotencyKey },
     })
@@ -352,7 +361,7 @@ export class AIResource {
       AIRenderResult | Job
     >({
       method: 'POST',
-      path: `/api/v1/photo-mockups/${params.mockupId}/render`,
+      path: `${this.basePath}/${params.mockupId}/render`,
       body,
       timeout: AI_RENDER_TIMEOUT,
     })
@@ -400,7 +409,7 @@ export class AIResource {
       offset?: number
     }>({
       method: 'GET',
-      path: '/api/v1/photo-mockups',
+      path: this.basePath,
       query: {
         limit: params.limit,
         offset: params.offset,
@@ -423,7 +432,7 @@ export class AIResource {
   async get(mockupId: string): Promise<TwoDMockupDetails> {
     const mockup = await this.client.request<TwoDMockupDetails>({
       method: 'GET',
-      path: `/api/v1/photo-mockups/${mockupId}`,
+      path: `${this.basePath}/${mockupId}`,
     })
     return publicMockupDetails(mockup)
   }
@@ -444,7 +453,7 @@ export class AIResource {
 
     const result = await this.client.request<Update2DPrintAreasResult>({
       method: 'PUT',
-      path: `/api/v1/photo-mockups/${mockupId}/print-areas`,
+      path: `${this.basePath}/${mockupId}/print-areas`,
       body: { printAreas },
     })
     return {
@@ -459,7 +468,7 @@ export class AIResource {
   async delete(mockupId: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/photo-mockups/${mockupId}`,
+      path: `${this.basePath}/${mockupId}`,
     })
   }
 }

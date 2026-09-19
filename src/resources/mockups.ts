@@ -74,8 +74,16 @@ export function toPublicMockup(mockup: Mockup): Mockup {
   }
 }
 
+/** Path the PSD-mockup family is served on. */
+export const PSD_MOCKUPS_PATH = '/api/v1/psd-mockups'
+/** Path `client.mockups` was published on; it still answers. */
+export const EARLIER_PSD_MOCKUPS_PATH = '/api/v1/mockups'
+
 export class MockupsResource {
-  constructor(private readonly client: HttpClient) {}
+  constructor(
+    private readonly client: HttpClient,
+    private readonly basePath: string = PSD_MOCKUPS_PATH,
+  ) {}
 
   /**
    * List mockups with pagination and filtering.
@@ -88,7 +96,7 @@ export class MockupsResource {
   async list(params: ListMockupsParams = {}): Promise<MockupListResult> {
     const result = await this.client.request<MockupListResult>({
       method: 'GET',
-      path: '/api/v1/psd-mockups',
+      path: this.basePath,
       query: {
         limit: params.limit,
         offset: params.offset,
@@ -119,7 +127,7 @@ export class MockupsResource {
   async get(uuid: string): Promise<Mockup> {
     const mockup = await this.client.request<Mockup>({
       method: 'GET',
-      path: `/api/v1/psd-mockups/${uuid}`,
+      path: `${this.basePath}/${uuid}`,
     })
     return toPublicMockup(mockup)
   }
@@ -135,7 +143,7 @@ export class MockupsResource {
   async update(uuid: string, params: { name: string }): Promise<Mockup> {
     const mockup = await this.client.request<Mockup>({
       method: 'PATCH',
-      path: `/api/v1/psd-mockups/${uuid}`,
+      path: `${this.basePath}/${uuid}`,
       body: params,
     })
     return toPublicMockup(mockup)
@@ -152,7 +160,7 @@ export class MockupsResource {
   async delete(uuid: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/psd-mockups/${uuid}`,
+      path: `${this.basePath}/${uuid}`,
     })
   }
 }
