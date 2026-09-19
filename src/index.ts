@@ -1,9 +1,9 @@
 import { deprecate } from 'node:util'
 import { HttpClient } from './client'
 import { SudoMockError } from './errors'
-import { MockupsResource } from './resources/mockups'
+import { EARLIER_PSD_MOCKUPS_PATH, MockupsResource } from './resources/mockups'
 import { RendersResource } from './resources/renders'
-import { AIResource } from './resources/ai'
+import { AIResource, EARLIER_PHOTO_MOCKUPS_PATH } from './resources/ai'
 import { ImagesResource } from './resources/images'
 import { UploadsResource } from './resources/uploads'
 import { AccountResource } from './resources/account'
@@ -70,6 +70,12 @@ class SudoMock {
   /** Manage webhook endpoints and their deliveries */
   readonly webhooks: WebhooksResource
 
+  // Backing objects for the earlier accessor names. They speak to the paths
+  // those names were published on, so an upgrade alone never moves a caller's
+  // work to a different family. Writable, so a test double can replace them.
+  private earlierPhotoMockups: AIResource
+  private earlierPsdMockups: MockupsResource
+
   constructor(apiKey?: string, options: SudoMockOptions = {}) {
     const resolvedKey = apiKey ?? options.apiKey ?? process.env['SUDOMOCK_API_KEY'] ?? ''
 
@@ -95,18 +101,35 @@ class SudoMock {
     this.studio = new StudioResource(client)
     this.jobs = new JobsResource(client)
     this.webhooks = new WebhooksResource(client)
+
+    this.earlierPhotoMockups = new AIResource(client, EARLIER_PHOTO_MOCKUPS_PATH)
+    this.earlierPsdMockups = new MockupsResource(client, EARLIER_PSD_MOCKUPS_PATH)
   }
 
-  /** @deprecated Earlier name of {@link SudoMock.psdMockups}. The same object; warns once per process. */
+  /**
+   * @deprecated Earlier name of {@link SudoMock.psdMockups}. Same methods, on
+   * the path this name was published on; warns once per process.
+   */
   get mockups(): MockupsResource {
     warnMockups()
-    return this.psdMockups
+    return this.earlierPsdMockups
   }
 
-  /** @deprecated Earlier name of {@link SudoMock.photoMockups}. The same object; warns once per process. */
+  set mockups(resource: MockupsResource) {
+    this.earlierPsdMockups = resource
+  }
+
+  /**
+   * @deprecated Earlier name of {@link SudoMock.photoMockups}. Same methods, on
+   * the path this name was published on; warns once per process.
+   */
   get ai(): AIResource {
     warnAi()
-    return this.photoMockups
+    return this.earlierPhotoMockups
+  }
+
+  set ai(resource: AIResource) {
+    this.earlierPhotoMockups = resource
   }
 }
 

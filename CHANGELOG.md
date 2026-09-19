@@ -5,6 +5,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.1] - 2026-09-19
+
+### Fixed
+- `client.ai` and `client.mockups` are pinned to the paths they were published
+  on: `/api/v1/sudoai/2d-mockups` and `/api/v1/mockups`. 2.7.0 routed them to
+  the family paths, so upgrading the package alone moved a caller's new jobs to
+  the `photo_mockup_*` kinds without an error anywhere, and code branching on
+  `job.kind === '2d_create'` stopped matching in silence. An async job opened
+  through an earlier name again resolves with `2d_create` / `2d_render`, as
+  2.6.x documented. `client.photoMockups` and `client.psdMockups` keep the
+  family paths and the `photo_mockup_*` kinds; move to them to adopt the new
+  names deliberately.
+- `client.ai` and `client.mockups` accept assignment. They were getter-only, so
+  injecting a test double threw a `TypeError` in an ES module and was dropped
+  without a word in plain CommonJS -- where the call then left the test and
+  reached the live API. Assigning to either now replaces only that accessor;
+  `client.photoMockups` / `client.psdMockups` are untouched.
+
 ## [2.7.0] - 2026-09-19
 
 ### Added
