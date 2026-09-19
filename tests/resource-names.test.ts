@@ -42,6 +42,11 @@ describe('deprecated accessors', () => {
     const call = warn.mock.calls[0] as unknown[] | undefined
     expect(String(call?.[0])).toContain('client.ai')
     expect(String(call?.[0])).toContain('client.photoMockups')
+    // The two are not one object: each speaks to the path its name was
+    // published on. A warning that called them the same would read as a free
+    // swap and quietly move the reader's jobs to the other family's kinds.
+    expect(String(call?.[0])).not.toContain('same object')
+    expect(String(call?.[0])).toContain('published on')
     expect(call?.[1]).toBe('DeprecationWarning')
   })
 
@@ -57,6 +62,8 @@ describe('deprecated accessors', () => {
     const call = warn.mock.calls[0] as unknown[] | undefined
     expect(String(call?.[0])).toContain('client.mockups')
     expect(String(call?.[0])).toContain('client.psdMockups')
+    expect(String(call?.[0])).not.toContain('same object')
+    expect(String(call?.[0])).toContain('published on')
     expect(call?.[1]).toBe('DeprecationWarning')
   })
 })
@@ -341,5 +348,83 @@ describe('earlier accessors accept assignment', () => {
 
     expect(sloppyAssign(client, 'mockups', psdDouble)).toBe(psdDouble)
     expect(client.mockups).toBe(psdDouble)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// An earlier accessor reads back exactly the field its setter writes, and no
+// other. A save-restore round trip -- the shape every test double uses, and the
+// shape vi.spyOn puts the property back in -- therefore leaves both the earlier
+// and the family accessor where it found them. A setter that also wrote the
+// family field would survive the assignment but not the restore: the restore
+// would park the earlier-path object on the family name for the rest of the
+// process, and every later call on the family name would leave its own path
+// without a word.
+// ---------------------------------------------------------------------------
+
+describe('earlier accessors are symmetric', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('a save-restore round trip leaves client.ai and client.photoMockups where they started', () => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => {})
+    const client = createClient()
+    const earlier = client.ai
+    const family = client.photoMockups
+    const double = { list: () => Promise.resolve(null) } as unknown as AIResource
+
+    client.ai = double
+    expect(client.ai).toBe(double)
+    expect(client.photoMockups).toBe(family)
+
+    client.ai = earlier
+    expect(client.ai).toBe(earlier)
+    expect(client.photoMockups).toBe(family)
+  })
+
+  it('a save-restore round trip leaves client.mockups and client.psdMockups where they started', () => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => {})
+    const client = createClient()
+    const earlier = client.mockups
+    const family = client.psdMockups
+    const double = { list: () => Promise.resolve(null) } as unknown as MockupsResource
+
+    client.mockups = double
+    expect(client.mockups).toBe(double)
+    expect(client.psdMockups).toBe(family)
+
+    client.mockups = earlier
+    expect(client.mockups).toBe(earlier)
+    expect(client.psdMockups).toBe(family)
+  })
+
+  it('vi.spyOn over an earlier accessor restores both accessors', () => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => {})
+    const client = createClient()
+    const earlier = client.ai
+    const family = client.photoMockups
+    const double = { list: () => Promise.resolve(null) } as unknown as AIResource
+
+    const spy = vi.spyOn(client, 'ai', 'get').mockReturnValue(double)
+    expect(client.ai).toBe(double)
+    expect(client.photoMockups).toBe(family)
+
+    spy.mockRestore()
+    expect(client.ai).toBe(earlier)
+    expect(client.photoMockups).toBe(family)
+  })
+
+  it('an earlier accessor can be deleted off the instance without throwing', () => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => {})
+    const client = createClient()
+    const family = client.photoMockups
+
+    expect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (client as unknown as Record<string, unknown>)['ai']
+    }).not.toThrow()
+    expect(client.ai).toBeInstanceOf(AIResource)
+    expect(client.photoMockups).toBe(family)
   })
 })

@@ -16,15 +16,15 @@ const DEFAULT_BASE_URL = 'https://api.sudomock.com'
 const DEFAULT_TIMEOUT = 30_000
 const DEFAULT_MAX_RETRIES = 2
 
-// Earlier accessor names. Each warns once per process, then behaves exactly
-// like the name it stands for.
+// Earlier accessor names. Each warns once per process, then serves the same
+// methods on the path its own name was published on.
 const warnAi = deprecate(
   () => {},
-  'client.ai is deprecated, use client.photoMockups (the same object).',
+  'client.ai is deprecated, use client.photoMockups. client.ai keeps the path it was published on and the 2d_* job kinds; client.photoMockups is the photo-mockup family path.',
 )
 const warnMockups = deprecate(
   () => {},
-  'client.mockups is deprecated, use client.psdMockups (the same object).',
+  'client.mockups is deprecated, use client.psdMockups. client.mockups keeps the path it was published on; client.psdMockups is the PSD-mockup family path.',
 )
 
 /**
