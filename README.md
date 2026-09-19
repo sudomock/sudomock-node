@@ -53,7 +53,11 @@ The API key can be passed as the first argument or via the `SUDOMOCK_API_KEY` en
 Every request identifies itself with `X-SudoMock-Client: node-sdk/<version>` (and the same value as `User-Agent` where the runtime allows it), so you can pick the SDK's traffic out of your own logs and proxy rules.
 
 `client.ai` and `client.mockups` are the earlier names of `client.photoMockups`
-and `client.psdMockups`. They return the same objects and warn once per process.
+and `client.psdMockups`. Each stays on the endpoint it was published on, so an
+async job you open through an earlier name comes back under the `2d_*` kind it
+always did, and each warns once per process. Switch to `client.photoMockups` /
+`client.psdMockups` to move to the family paths and the `photo_mockup_*` kinds.
+Both earlier names accept assignment, so a test double can replace them.
 
 ### PSD Mockups (`client.psdMockups`)
 
