@@ -23,6 +23,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   reached the live API. Assigning to either now replaces only that accessor;
   `client.photoMockups` / `client.psdMockups` are untouched.
 
+### Documentation
+- The deprecation warning no longer calls an earlier name and its family name
+  "the same object". They are two objects, each on the path its own name was
+  published on, and the warning now says so -- the earlier wording read as a
+  free swap and sent readers into the `2d_*` / `photo_mockup_*` kind change the
+  release above is about.
+- `WebhookEventNaming` and `CreateWebhookEndpointParams.eventNaming` describe
+  the real default. An endpoint you do not pin yourself follows the spelling of
+  the `eventTypes` you subscribe in: family names give `current`, the earlier
+  `2d_mockup.*` / `2d_render.*` names give `legacy`, and an empty or mixed list
+  gives `legacy`. The docs said a new endpoint was always pinned to `current`.
+  Behaviour is the API's; nothing in this package changed.
+
 ## [2.7.0] - 2026-09-19
 
 ### Added
