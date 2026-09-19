@@ -271,7 +271,7 @@ export const MOCK_WEBHOOK_DELIVERY = {
 
 export const handlers = [
   // List mockups
-  http.get(`${TEST_BASE_URL}/api/v1/mockups`, ({ request }) => {
+  http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, ({ request }) => {
     const apiKey = request.headers.get('x-api-key')
     if (apiKey !== TEST_API_KEY) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
@@ -288,7 +288,7 @@ export const handlers = [
   }),
 
   // Get mockup
-  http.get(`${TEST_BASE_URL}/api/v1/mockups/:uuid`, ({ request, params }) => {
+  http.get(`${TEST_BASE_URL}/api/v1/psd-mockups/:uuid`, ({ request, params }) => {
     const apiKey = request.headers.get('x-api-key')
     if (apiKey !== TEST_API_KEY) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
@@ -303,7 +303,7 @@ export const handlers = [
   }),
 
   // Update mockup
-  http.patch(`${TEST_BASE_URL}/api/v1/mockups/:uuid`, ({ request }) => {
+  http.patch(`${TEST_BASE_URL}/api/v1/psd-mockups/:uuid`, ({ request }) => {
     const apiKey = request.headers.get('x-api-key')
     if (apiKey !== TEST_API_KEY) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
@@ -315,7 +315,7 @@ export const handlers = [
   }),
 
   // Delete mockup
-  http.delete(`${TEST_BASE_URL}/api/v1/mockups/:uuid`, ({ request }) => {
+  http.delete(`${TEST_BASE_URL}/api/v1/psd-mockups/:uuid`, ({ request }) => {
     const apiKey = request.headers.get('x-api-key')
     if (apiKey !== TEST_API_KEY) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
@@ -334,7 +334,7 @@ export const handlers = [
 
   // AI 2D-mockup Render (mockup id in path)
   http.post(
-    `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+    `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
     ({ request }) => {
       const apiKey = request.headers.get('x-api-key')
       if (apiKey !== TEST_API_KEY) {

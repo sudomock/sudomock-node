@@ -82,13 +82,13 @@ export class MockupsResource {
    *
    * @example
    * ```ts
-   * const { mockups, total } = await client.mockups.list({ limit: 10 })
+   * const { mockups, total } = await client.psdMockups.list({ limit: 10 })
    * ```
    */
   async list(params: ListMockupsParams = {}): Promise<MockupListResult> {
     const result = await this.client.request<MockupListResult>({
       method: 'GET',
-      path: '/api/v1/mockups',
+      path: '/api/v1/psd-mockups',
       query: {
         limit: params.limit,
         offset: params.offset,
@@ -112,14 +112,14 @@ export class MockupsResource {
    *
    * @example
    * ```ts
-   * const mockup = await client.mockups.get('uuid')
+   * const mockup = await client.psdMockups.get('uuid')
    * console.log(mockup.smartObjects)
    * ```
    */
   async get(uuid: string): Promise<Mockup> {
     const mockup = await this.client.request<Mockup>({
       method: 'GET',
-      path: `/api/v1/mockups/${uuid}`,
+      path: `/api/v1/psd-mockups/${uuid}`,
     })
     return toPublicMockup(mockup)
   }
@@ -129,13 +129,13 @@ export class MockupsResource {
    *
    * @example
    * ```ts
-   * const updated = await client.mockups.update('uuid', { name: 'New Name' })
+   * const updated = await client.psdMockups.update('uuid', { name: 'New Name' })
    * ```
    */
   async update(uuid: string, params: { name: string }): Promise<Mockup> {
     const mockup = await this.client.request<Mockup>({
       method: 'PATCH',
-      path: `/api/v1/mockups/${uuid}`,
+      path: `/api/v1/psd-mockups/${uuid}`,
       body: params,
     })
     return toPublicMockup(mockup)
@@ -146,13 +146,13 @@ export class MockupsResource {
    *
    * @example
    * ```ts
-   * await client.mockups.delete('uuid')
+   * await client.psdMockups.delete('uuid')
    * ```
    */
   async delete(uuid: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/mockups/${uuid}`,
+      path: `/api/v1/psd-mockups/${uuid}`,
     })
   }
 }

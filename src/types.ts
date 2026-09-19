@@ -339,7 +339,7 @@ export interface RenderResult {
 }
 
 // ---------------------------------------------------------------------------
-// SudoAI 2D Mockups (client.ai)
+// Photo Mockups (client.photoMockups)
 // ---------------------------------------------------------------------------
 
 /** Image adjustments applied to a 2D-mockup print area. */
@@ -519,7 +519,7 @@ export interface AIRenderParams {
    * Submit the 2D render asynchronously.
    *
    * When `true`, the API enqueues the render and immediately returns a
-   * {@link Job} of kind `'2d_render'` (HTTP 202) instead of blocking until the
+   * {@link Job} of kind `'photo_mockup_render'` (HTTP 202) instead of blocking until the
    * render completes. Poll the job with `client.jobs.retrieve(job.jobId)` or
    * `client.jobs.waitForJob(job.jobId)`; a `photo_mockup_render.succeeded` /
    * `photo_mockup_render.failed` webhook also fires (`2d_render.succeeded` /
@@ -566,7 +566,7 @@ export type Create2DMockupParams = {
    *
    * When `true`, the API enqueues creation and immediately returns a
    * {@link Job} (HTTP 202) instead of blocking until the mockup is ready. Pass
-   * the job to `client.ai.waitForReady()` (or poll via `client.jobs`).
+   * the job to `client.photoMockups.waitForReady()` (or poll via `client.jobs`).
    *
    * Default: `false` (synchronous, returns the ready {@link TwoDMockupDetails}).
    */
@@ -579,13 +579,13 @@ export type Create2DMockupParams = {
 /** Accepted 2D-mockup creation job. */
 export interface Create2DMockupResult {
   jobId: string
-  /** `'2d_create'` from `client.ai`; `'photo_mockup_create'` when submitted on `/api/v1/photo-mockups`. */
+  /** `'photo_mockup_create'` from `client.photoMockups` (2.7.0 and later); `'2d_create'` from this SDK up to 2.6.x. */
   kind: '2d_create' | 'photo_mockup_create'
   status: 'queued'
   statusUrl: string
 }
 
-/** Options for `client.ai.waitForReady()`. */
+/** Options for `client.photoMockups.waitForReady()`. */
 export interface WaitFor2DMockupOptions {
   /** Milliseconds between polls (default: 2000). */
   intervalMs?: number
@@ -632,13 +632,13 @@ export interface TwoDPrintAreaInput {
   name?: string
 }
 
-/** Updated geometry returned by `client.ai.updatePrintAreas()`. */
+/** Updated geometry returned by `client.photoMockups.updatePrintAreas()`. */
 export interface Update2DPrintAreasResult {
   mockupId: string
   printAreas: TwoDMockupQuad[]
 }
 
-/** A 2D mockup as returned by `client.ai.get()` / `client.ai.list()`. */
+/** A 2D mockup as returned by `client.photoMockups.get()` / `client.photoMockups.list()`. */
 export interface TwoDMockup {
   mockupId: string
   name: string
@@ -658,14 +658,14 @@ export interface TwoDMockup {
   updatedAt: string
 }
 
-/** Full 2D mockup returned by `client.ai.get()` and `waitForReady()`. */
+/** Full 2D mockup returned by `client.photoMockups.get()` and `waitForReady()`. */
 export interface TwoDMockupDetails extends TwoDMockup {
   quads: TwoDMockupQuad[]
   /** Every printable product in the photo, each a render target on its own. */
   surfaces: TwoDFullSurface[]
 }
 
-/** Pagination params for `client.ai.list()`. */
+/** Pagination params for `client.photoMockups.list()`. */
 export interface List2dMockupsParams {
   /** Number of mockups to return (1-100, default: 20). */
   limit?: number
@@ -676,7 +676,7 @@ export interface List2dMockupsParams {
 }
 
 /**
- * An offset-paginated page of 2D mockups (`client.ai.list()`).
+ * An offset-paginated page of 2D mockups (`client.photoMockups.list()`).
  *
  * The API returns the pagination metadata (`total` / `limit` / `offset`)
  * as siblings of the `data` array; this surfaces it so callers can drive
@@ -759,17 +759,41 @@ export interface UploadResult {
 }
 
 // ---------------------------------------------------------------------------
-// Jobs (async renders / videos / uploads / 2D creation)
+// Photo-mockup family names. Each is the same shape as the name it stands
+// beside; both spellings stay exported.
+// ---------------------------------------------------------------------------
+
+export type PhotoMockup = TwoDMockup
+export type PhotoMockupDetails = TwoDMockupDetails
+export type PhotoMockupQuad = TwoDMockupQuad
+export type PhotoMockupSurface = TwoDFullSurface
+export type PhotoMockupPrintAreaInput = TwoDPrintAreaInput
+export type PhotoMockupListResult = TwoDMockupListResult
+export type ListPhotoMockupsParams = List2dMockupsParams
+export type CreatePhotoMockupParams = Create2DMockupParams
+export type CreatePhotoMockupResult = Create2DMockupResult
+export type WaitForPhotoMockupOptions = WaitFor2DMockupOptions
+export type UpdatePhotoMockupPrintAreasResult = Update2DPrintAreasResult
+export type PhotoMockupRenderParams = AIRenderParams
+export type PhotoMockupRenderResult = AIRenderResult
+export type PhotoMockupPrintArea = AIPrintArea
+export type PhotoMockupPrintFile = AIPrintFile
+export type PhotoMockupAdjustments = AIAdjustments
+export type PhotoMockupPlacement = AIPlacement
+
+// ---------------------------------------------------------------------------
+// Jobs (async renders / videos / uploads / photo-mockup creation)
 // ---------------------------------------------------------------------------
 
 /**
  * The kind of work a job performs.
  *
- * A photo-mockup job has two spellings: `'photo_mockup_create'` /
- * `'photo_mockup_render'` when submitted on `/api/v1/photo-mockups`, and
- * `'2d_create'` / `'2d_render'` when submitted on `/api/v1/sudoai/2d-mockups`
- * (the path `client.ai` posts to). Filtering {@link JobsResource.list} by
- * either spelling returns both.
+ * A photo-mockup job is named `'photo_mockup_create'` / `'photo_mockup_render'`
+ * when submitted on `/api/v1/photo-mockups`, the path `client.photoMockups`
+ * posts to since 2.7.0. A job submitted on the earlier
+ * `/api/v1/sudoai/2d-mockups` path (this SDK up to 2.6.x) is named
+ * `'2d_create'` / `'2d_render'`. Filtering {@link JobsResource.list} by either
+ * spelling returns both.
  */
 export type JobKind =
   | 'render'
