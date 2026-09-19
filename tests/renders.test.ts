@@ -247,7 +247,7 @@ describe('renders.create()', () => {
 describe('ai.render() — 2D mockup', () => {
   it('renders artwork onto a 2D mockup and returns URL + renderUuid', async () => {
     const client = createClient()
-    const result = await client.ai.render({
+    const result = await client.photoMockups.render({
       mockupId: '11111111-1111-1111-1111-111111111111',
       printAreas: [
         {
@@ -269,12 +269,12 @@ describe('ai.render() — 2D mockup', () => {
     expect(result.printFiles[0]).not.toHaveProperty('privateStorageKey')
   })
 
-  it('posts the 2D render body in snake_case to /sudoai/2d-mockups/{id}/render (id in path, not body)', async () => {
+  it('posts the 2D render body in snake_case to /photo-mockups/{id}/render (id in path, not body)', async () => {
     let capturedBody: Record<string, unknown> = {}
     let capturedPath = ''
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedPath = new URL(request.url).pathname
           capturedBody = (await request.json()) as Record<string, unknown>
@@ -284,7 +284,7 @@ describe('ai.render() — 2D mockup', () => {
     )
 
     const client = createClient()
-    await client.ai.render({
+    await client.photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         {
@@ -296,7 +296,7 @@ describe('ai.render() — 2D mockup', () => {
       exportOptions: { imageFormat: 'webp', imageSize: 2048, quality: 90 },
     })
 
-    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockups/mockup-uuid/render')
+    expect(capturedPath).toBe('/api/v1/photo-mockups/mockup-uuid/render')
     // Mockup id moved into the path -- it must NOT be in the body anymore.
     expect(capturedBody['mockup_uuid']).toBeUndefined()
     const printAreas = capturedBody['print_areas'] as Record<string, unknown>[]
@@ -318,7 +318,7 @@ describe('ai.render() — 2D mockup', () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
@@ -326,7 +326,7 @@ describe('ai.render() — 2D mockup', () => {
       ),
     )
 
-    await createClient().ai.render({
+    await createClient().photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         {
@@ -349,7 +349,7 @@ describe('ai.render() — 2D mockup', () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
@@ -357,7 +357,7 @@ describe('ai.render() — 2D mockup', () => {
       ),
     )
 
-    await createClient().ai.render({
+    await createClient().photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         {
@@ -381,7 +381,7 @@ describe('ai.render() — 2D mockup', () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
@@ -393,7 +393,7 @@ describe('ai.render() — 2D mockup', () => {
     // enforces it: handing a print area a coverage, or a surface a fit, does
     // not compile. This test used to send both on one target, which the API
     // now answers with a 422.
-    await createClient().ai.render({
+    await createClient().photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         {
@@ -424,7 +424,7 @@ describe('ai.render() — 2D mockup', () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(MOCK_AI_RENDER_RESPONSE)
@@ -432,7 +432,7 @@ describe('ai.render() — 2D mockup', () => {
       ),
     )
 
-    await createClient().ai.render({
+    await createClient().photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [{
         surfaceUuid: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -453,14 +453,14 @@ describe('ai.render() — 2D mockup', () => {
     let capturedPath = ''
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         async ({ request }) => {
           capturedPath = new URL(request.url).pathname
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json(
             {
               job_id: TWO_D_CREATE_JOB_ID,
-              kind: '2d_render',
+              kind: 'photo_mockup_render',
               status: 'queued',
               status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
             },
@@ -470,7 +470,7 @@ describe('ai.render() — 2D mockup', () => {
       ),
     )
 
-    const job = await createClient().ai.render({
+    const job = await createClient().photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         { uuid: 'pa-uuid', artworkUrl: 'https://example.com/design.png' },
@@ -479,13 +479,13 @@ describe('ai.render() — 2D mockup', () => {
     })
 
     // Still the plural path-param URL; id stays in the path, not the body.
-    expect(capturedPath).toBe('/api/v1/sudoai/2d-mockups/mockup-uuid/render')
+    expect(capturedPath).toBe('/api/v1/photo-mockups/mockup-uuid/render')
     expect(capturedBody['is_async']).toBe(true)
     expect(capturedBody['mockup_uuid']).toBeUndefined()
     // 202 resolves with the job envelope (no printFiles read -> no crash).
     expect(job).toEqual({
       jobId: TWO_D_CREATE_JOB_ID,
-      kind: '2d_render',
+      kind: 'photo_mockup_render',
       status: 'queued',
       statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
     })
@@ -495,12 +495,12 @@ describe('ai.render() — 2D mockup', () => {
   it('awaits an async 2D render via jobs.waitForJob to a result_url', async () => {
     server.use(
       http.post(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/render`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/render`,
         () =>
           HttpResponse.json(
             {
               job_id: TWO_D_CREATE_JOB_ID,
-              kind: '2d_render',
+              kind: 'photo_mockup_render',
               status: 'queued',
               status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
             },
@@ -512,7 +512,7 @@ describe('ai.render() — 2D mockup', () => {
           success: true,
           data: {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_render',
+            kind: 'photo_mockup_render',
             status: 'succeeded',
             result_url: 'https://cdn.sudomock.com/renders/sudoai/async-done.png',
             error: null,
@@ -522,7 +522,7 @@ describe('ai.render() — 2D mockup', () => {
     )
 
     const client = createClient()
-    const job = await client.ai.render({
+    const job = await client.photoMockups.render({
       mockupId: 'mockup-uuid',
       printAreas: [
         { uuid: 'pa-uuid', artworkUrl: 'https://example.com/design.png' },
@@ -543,7 +543,7 @@ describe('ai.create() and waitForReady()', () => {
     let capturedBody: Record<string, unknown> = {}
     let idempotencyKey: string | null = null
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
         idempotencyKey = request.headers.get('Idempotency-Key')
         return HttpResponse.json(
@@ -553,7 +553,7 @@ describe('ai.create() and waitForReady()', () => {
       }),
     )
 
-    const mockup = await createClient().ai.create({
+    const mockup = await createClient().photoMockups.create({
       sourceUrl: 'https://example.com/product.jpg',
       name: 'Front view',
       idempotencyKey: 'front-view-v1',
@@ -582,7 +582,7 @@ describe('ai.create() and waitForReady()', () => {
     let capturedBody: Record<string, unknown> = {}
     let idempotencyKey: string | null = null
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
         idempotencyKey = request.headers.get('Idempotency-Key')
         return HttpResponse.json(
@@ -592,7 +592,7 @@ describe('ai.create() and waitForReady()', () => {
       }),
     )
 
-    await createClient().ai.create({ sourceBase64: 'aW1hZ2U=' })
+    await createClient().photoMockups.create({ sourceBase64: 'aW1hZ2U=' })
 
     expect(capturedBody).toEqual({ source_base64: 'aW1hZ2U=' })
     expect(idempotencyKey).toMatch(
@@ -603,12 +603,12 @@ describe('ai.create() and waitForReady()', () => {
   it('returns a Job (202) and sends is_async when isAsync: true', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
         return HttpResponse.json(
           {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
+            kind: 'photo_mockup_create',
             status: 'queued',
             status_url: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
           },
@@ -617,7 +617,7 @@ describe('ai.create() and waitForReady()', () => {
       }),
     )
 
-    const job = await createClient().ai.create({
+    const job = await createClient().photoMockups.create({
       sourceUrl: 'https://example.com/product.jpg',
       isAsync: true,
     })
@@ -628,7 +628,7 @@ describe('ai.create() and waitForReady()', () => {
     })
     expect(job).toEqual({
       jobId: TWO_D_CREATE_JOB_ID,
-      kind: '2d_create',
+      kind: 'photo_mockup_create',
       status: 'queued',
       statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
     })
@@ -637,7 +637,7 @@ describe('ai.create() and waitForReady()', () => {
   it('passes through seed print_areas (with names) on create', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, async ({ request }) => {
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, async ({ request }) => {
         capturedBody = (await request.json()) as Record<string, unknown>
         return HttpResponse.json(
           { success: true, data: MOCK_2D_MOCKUP },
@@ -646,7 +646,7 @@ describe('ai.create() and waitForReady()', () => {
       }),
     )
 
-    await createClient().ai.create({
+    await createClient().photoMockups.create({
       sourceUrl: 'https://example.com/product.jpg',
       printAreas: [
         { points: [[0, 0], [1, 0], [1, 1], [0, 1]], name: 'Front' },
@@ -660,9 +660,9 @@ describe('ai.create() and waitForReady()', () => {
 
   it('rejects both or neither source before making a request', async () => {
     const client = createClient()
-    await expect(client.ai.create({} as never)).rejects.toThrow(ValidationError)
+    await expect(client.photoMockups.create({} as never)).rejects.toThrow(ValidationError)
     await expect(
-      client.ai.create({ sourceUrl: 'https://example.com/x.jpg', sourceBase64: 'eA==' } as never),
+      client.photoMockups.create({ sourceUrl: 'https://example.com/x.jpg', sourceBase64: 'eA==' } as never),
     ).rejects.toThrow(ValidationError)
   })
 
@@ -673,21 +673,21 @@ describe('ai.create() and waitForReady()', () => {
           success: true,
           data: {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
+            kind: 'photo_mockup_create',
             status: 'succeeded',
             mockup_uuid: MOCK_2D_MOCKUP.mockup_id,
-            result_url: `/api/v1/sudoai/2d-mockups/${MOCK_2D_MOCKUP.mockup_id}`,
+            result_url: `/api/v1/photo-mockups/${MOCK_2D_MOCKUP.mockup_id}`,
           },
         }),
       ),
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/photo-mockups/:id`, () =>
         HttpResponse.json({ success: true, data: MOCK_2D_MOCKUP }),
       ),
     )
 
-    const mockup = await createClient().ai.waitForReady({
+    const mockup = await createClient().photoMockups.waitForReady({
       jobId: TWO_D_CREATE_JOB_ID,
-      kind: '2d_create',
+      kind: 'photo_mockup_create',
       status: 'queued',
       statusUrl: `/api/v1/jobs/${TWO_D_CREATE_JOB_ID}`,
     })
@@ -705,7 +705,7 @@ describe('ai.create() and waitForReady()', () => {
           success: true,
           data: {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
+            kind: 'photo_mockup_create',
             status: 'succeeded',
           },
         }),
@@ -713,7 +713,7 @@ describe('ai.create() and waitForReady()', () => {
     )
 
     await expect(
-      createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID),
+      createClient().photoMockups.waitForReady(TWO_D_CREATE_JOB_ID),
     ).rejects.toMatchObject({ code: 'invalid_job_response' })
   })
 
@@ -724,7 +724,7 @@ describe('ai.create() and waitForReady()', () => {
           success: true,
           data: {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
+            kind: 'photo_mockup_create',
             status: 'failed',
             error: {
               error_code: 'NOT_MOCKUPABLE',
@@ -735,7 +735,7 @@ describe('ai.create() and waitForReady()', () => {
       ),
     )
 
-    const error = await createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID, {
+    const error = await createClient().photoMockups.waitForReady(TWO_D_CREATE_JOB_ID, {
       intervalMs: 5,
     }).catch((caught: unknown) => caught)
 
@@ -754,14 +754,14 @@ describe('ai.create() and waitForReady()', () => {
           success: true,
           data: {
             job_id: TWO_D_CREATE_JOB_ID,
-            kind: '2d_create',
+            kind: 'photo_mockup_create',
             status: 'running',
           },
         }),
       ),
     )
 
-    const error = await createClient().ai.waitForReady(TWO_D_CREATE_JOB_ID, {
+    const error = await createClient().photoMockups.waitForReady(TWO_D_CREATE_JOB_ID, {
       intervalMs: 5,
       timeoutMs: 20,
     }).catch((caught: unknown) => caught)
@@ -775,7 +775,7 @@ describe('ai.create() and waitForReady()', () => {
 
   it('throws CreditError on 402', async () => {
     server.use(
-      http.post(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, () =>
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups`, () =>
         HttpResponse.json(
           { detail: 'Insufficient credits' },
           { status: 402 },
@@ -784,7 +784,7 @@ describe('ai.create() and waitForReady()', () => {
     )
 
     await expect(
-      createClient().ai.create({ sourceUrl: 'https://example.com/product.jpg' }),
+      createClient().photoMockups.create({ sourceUrl: 'https://example.com/product.jpg' }),
     ).rejects.toThrow(CreditError)
   })
 })
@@ -797,7 +797,7 @@ describe('ai.updatePrintAreas()', () => {
     }]
     server.use(
       http.put(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/print-areas`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/print-areas`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json({
@@ -815,7 +815,7 @@ describe('ai.updatePrintAreas()', () => {
       ),
     )
 
-    const result = await createClient().ai.updatePrintAreas(
+    const result = await createClient().photoMockups.updatePrintAreas(
       MOCK_2D_MOCKUP.mockup_id,
       printAreas,
     )
@@ -834,7 +834,7 @@ describe('ai.updatePrintAreas()', () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.put(
-        `${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id/print-areas`,
+        `${TEST_BASE_URL}/api/v1/photo-mockups/:id/print-areas`,
         async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>
           return HttpResponse.json({
@@ -848,10 +848,10 @@ describe('ai.updatePrintAreas()', () => {
       ),
     )
 
-    await client.ai.updatePrintAreas(MOCK_2D_MOCKUP.mockup_id, [])
+    await client.photoMockups.updatePrintAreas(MOCK_2D_MOCKUP.mockup_id, [])
     expect(capturedBody).toEqual({ print_areas: [] })
     await expect(
-      client.ai.updatePrintAreas(
+      client.photoMockups.updatePrintAreas(
         MOCK_2D_MOCKUP.mockup_id,
         Array(9).fill(printArea),
       ),
@@ -863,7 +863,7 @@ describe('ai 2D-mockup catalog', () => {
   it('lists 2D mockups', async () => {
     let customizableOnly: string | null = null
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups`, ({ request }) => {
+      http.get(`${TEST_BASE_URL}/api/v1/photo-mockups`, ({ request }) => {
         customizableOnly = new URL(request.url).searchParams.get('customizable_only')
         return (
         HttpResponse.json({
@@ -878,7 +878,7 @@ describe('ai 2D-mockup catalog', () => {
     )
 
     const client = createClient()
-    const page = await client.ai.list({ limit: 20, customizableOnly: true })
+    const page = await client.photoMockups.list({ limit: 20, customizableOnly: true })
     // Pagination metadata (total/limit/offset) is surfaced alongside the page.
     expect(page.total).toBe(1)
     expect(page.limit).toBe(20)
@@ -897,7 +897,7 @@ describe('ai 2D-mockup catalog', () => {
 
   it('gets a single 2D mockup', async () => {
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/photo-mockups/:id`, () =>
         HttpResponse.json({
           success: true,
           data: {
@@ -915,7 +915,7 @@ describe('ai 2D-mockup catalog', () => {
     )
 
     const client = createClient()
-    const mockup = await client.ai.get('99999999-9999-9999-9999-999999999999')
+    const mockup = await client.photoMockups.get('99999999-9999-9999-9999-999999999999')
     expect(mockup.name).toBe('2D Tee')
     expect(mockup.customizable).toBe(true)
     expect(mockup.quads?.[0]!.printAreaId).toBe(
@@ -933,7 +933,7 @@ describe('ai 2D-mockup catalog', () => {
   it('deletes a 2D mockup', async () => {
     let hitPath = ''
     server.use(
-      http.delete(`${TEST_BASE_URL}/api/v1/sudoai/2d-mockups/:id`, ({ request }) => {
+      http.delete(`${TEST_BASE_URL}/api/v1/photo-mockups/:id`, ({ request }) => {
         hitPath = new URL(request.url).pathname
         return HttpResponse.json({ success: true, data: { deleted: true } })
       }),
@@ -941,10 +941,10 @@ describe('ai 2D-mockup catalog', () => {
 
     const client = createClient()
     await expect(
-      client.ai.delete('99999999-9999-9999-9999-999999999999'),
+      client.photoMockups.delete('99999999-9999-9999-9999-999999999999'),
     ).resolves.toBeUndefined()
     expect(hitPath).toBe(
-      '/api/v1/sudoai/2d-mockups/99999999-9999-9999-9999-999999999999',
+      '/api/v1/photo-mockups/99999999-9999-9999-9999-999999999999',
     )
   })
 })

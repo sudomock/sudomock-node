@@ -1,6 +1,6 @@
 # SudoMock Node.js SDK
 
-Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Generate product mockups from Photoshop PSD files or use AI-powered rendering without any PSD.
+Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Generate product mockups from Photoshop PSD files, or from a product photo without any PSD.
 
 ## Installation
 
@@ -19,7 +19,7 @@ const client = new SudoMock('sm_your_api_key')
 // or set SUDOMOCK_API_KEY env var and call: new SudoMock()
 
 // List your mockups
-const { mockups, total } = await client.mockups.list({ limit: 10 })
+const { mockups, total } = await client.psdMockups.list({ limit: 10 })
 console.log(`Found ${total} mockups`)
 
 // Render a mockup with artwork
@@ -52,11 +52,14 @@ The API key can be passed as the first argument or via the `SUDOMOCK_API_KEY` en
 
 Every request identifies itself with `X-SudoMock-Client: node-sdk/<version>` (and the same value as `User-Agent` where the runtime allows it), so you can pick the SDK's traffic out of your own logs and proxy rules.
 
-### Mockups
+`client.ai` and `client.mockups` are the earlier names of `client.photoMockups`
+and `client.psdMockups`. They return the same objects and warn once per process.
+
+### PSD Mockups (`client.psdMockups`)
 
 ```typescript
 // List mockups with pagination and filtering
-const result = await client.mockups.list({
+const result = await client.psdMockups.list({
   limit: 20,
   offset: 0,
   name: 'shirt',        // case-insensitive contains
@@ -65,17 +68,17 @@ const result = await client.mockups.list({
 })
 
 // Get a single mockup
-const mockup = await client.mockups.get('uuid')
+const mockup = await client.psdMockups.get('uuid')
 console.log(mockup.smartObjects)
 
 // Update mockup name
-const updated = await client.mockups.update('uuid', { name: 'New Name' })
+const updated = await client.psdMockups.update('uuid', { name: 'New Name' })
 
 // Delete a mockup
-await client.mockups.delete('uuid')
+await client.psdMockups.delete('uuid')
 ```
 
-> **Bulk delete all mockups** (`DELETE /api/v1/mockups/all`) requires a
+> **Bulk delete all mockups** (`DELETE /api/v1/psd-mockups/all`) requires a
 > dashboard Bearer token and is **not** callable with an API key (the API
 > returns 403). It is therefore intentionally not exposed by this SDK -- use
 > the dashboard.
@@ -119,7 +122,7 @@ outputs. `smartObjects` is optional for text-only renders, and `fit` defaults to
 `'overflow'`.
 
 ```typescript
-const mockup = await client.mockups.get('mockup-uuid')
+const mockup = await client.psdMockups.get('mockup-uuid')
 const nameLayer = mockup.textLayers.find((layer) => layer.name === 'Customer Name')
 if (!nameLayer?.isEditable) throw new Error('Customer Name is not editable')
 
@@ -174,8 +177,9 @@ List and page your jobs (keyset pagination, newest first). Filter by `kind`
 (`render` | `video` | `upload` | `2d_create` | `2d_render` |
 `photo_mockup_create` | `photo_mockup_render`) and/or `mockupUuid`. A
 photo-mockup job is spelled `photo_mockup_*` when submitted on
-`/api/v1/photo-mockups` and `2d_*` when submitted through `client.ai`; filtering
-by either spelling returns both:
+`/api/v1/photo-mockups` (where `client.photoMockups` posts since 2.7.0) and
+`2d_*` when submitted on the earlier `/api/v1/sudoai/2d-mockups` path;
+filtering by either spelling returns both:
 
 ```typescript
 const { jobs, nextCursor } = await client.jobs.list({ kind: 'video', limit: 50 })
@@ -214,15 +218,15 @@ const job = await client.renders.createVideo({
 })
 ```
 
-### 2D Mockups (`client.ai`)
+### Photo Mockups (`client.photoMockups`)
 
 Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
-mockup catalog. `client.ai.render` posts to
-`/api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id lives in the path)
+mockup catalog. `client.photoMockups.render` posts to
+`/api/v1/photo-mockups/{mockupId}/render` (the mockup id lives in the path)
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
 `color`. Use `uuid` for a saved print area -- a bounded zone drawn on the
 product -- or `surfaceUuid` for a product surface, both returned by
-`client.ai.get()`. A product can have both, and they are separate targets.
+`client.photoMockups.get()`. A product can have both, and they are separate targets.
 Placement follows the target, and sizing has one answer per request: a surface
 takes a `coverage` percentage or an explicit `width` + `height`, a print area
 takes a `fit` or an explicit `width` + `height`. Anchoring -- `position`,
@@ -232,7 +236,7 @@ handing one the other's dial does not compile.
 #### Render an existing 2D mockup
 
 ```typescript
-const result = await client.ai.render({
+const result = await client.photoMockups.render({
   mockupId: 'mockup-uuid',
   printAreas: [{
     uuid: 'print-area-uuid',
@@ -249,13 +253,13 @@ console.log(result.printFiles[0].exportFormat) // 'webp'
 ```
 
 Prefer to render in the background? Pass `isAsync: true` and `render()` resolves
-with a `Job` of kind `'2d_render'` (`202 Accepted`) you await with
+with a `Job` of kind `'photo_mockup_render'` (`202 Accepted`) you await with
 `jobs.waitForJob`. A `photo_mockup_render.succeeded` /
 `photo_mockup_render.failed` webhook also fires (`2d_render.succeeded` /
 `2d_render.failed` on an endpoint that keeps the legacy event names).
 
 ```typescript
-const job = await client.ai.render({
+const job = await client.photoMockups.render({
   mockupId: 'mockup-uuid',
   printAreas: [{
     uuid: 'print-area-uuid',
@@ -277,7 +281,7 @@ Create a reusable 2D mockup, then render artwork. By default creation is
 **25 credits** are refunded automatically.
 
 ```typescript
-const mockup = await client.ai.create({
+const mockup = await client.photoMockups.create({
   sourceUrl: 'https://example.com/product.jpg',
   name: 'Front view',
   idempotencyKey: 'front-view-v1',
@@ -286,7 +290,7 @@ const mockup = await client.ai.create({
 const printArea = mockup.quads[0]
 if (!printArea) throw new Error('No print area available')
 
-const result = await client.ai.render({
+const result = await client.photoMockups.render({
   mockupId: mockup.mockupId,
   printAreas: [{
     uuid: printArea.printAreaId,
@@ -297,7 +301,7 @@ console.log(result.url)
 
 const fullSurface = mockup.surfaces[0]
 if (fullSurface) {
-  await client.ai.render({
+  await client.photoMockups.render({
     mockupId: mockup.mockupId,
     printAreas: [{
       surfaceUuid: fullSurface.surfaceUuid,
@@ -311,11 +315,11 @@ Prefer to create in the background? Pass `isAsync: true` and `create()` resolves
 with a `Job` you await with `waitForReady`:
 
 ```typescript
-const job = await client.ai.create({
+const job = await client.photoMockups.create({
   sourceUrl: 'https://example.com/product.jpg',
   isAsync: true,
 })
-const mockup = await client.ai.waitForReady(job, { intervalMs: 2_000 })
+const mockup = await client.photoMockups.waitForReady(job, { intervalMs: 2_000 })
 ```
 
 Update all print areas on a ready mockup with up to 8 four-point quads (each
@@ -324,7 +328,7 @@ the API has verified every product surface as printable; each of those is then
 a render target in its own right:
 
 ```typescript
-const updated = await client.ai.updatePrintAreas('mockup-uuid', [{
+const updated = await client.photoMockups.updatePrintAreas('mockup-uuid', [{
   points: [[100, 100], [900, 100], [900, 900], [100, 900]],
   name: 'Front',
 }])
@@ -334,13 +338,13 @@ console.log(updated.printAreas)
 Manage the 2D-mockup catalog:
 
 ```typescript
-const { mockups, total } = await client.ai.list({
+const { mockups, total } = await client.photoMockups.list({
   limit: 50,
   customizableOnly: true,
 })
 console.log(mockups[0]?.customizable)
-const mockup = await client.ai.get('mockup-uuid')
-await client.ai.delete('mockup-uuid')
+const mockup = await client.photoMockups.get('mockup-uuid')
+await client.photoMockups.delete('mockup-uuid')
 ```
 
 ### Background Removal (`client.images`)
@@ -382,7 +386,7 @@ await client.renders.create({
 })
 
 // 2D render
-await client.ai.render({
+await client.photoMockups.render({
   mockupId: 'mockup-uuid',
   printAreas: [{
     uuid: 'print-area-uuid',
