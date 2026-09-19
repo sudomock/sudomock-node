@@ -1023,8 +1023,13 @@ export type WebhookEvent =
  * - `'legacy'`  -- `2d_mockup.*` / `2d_render.*`; the payload's `kind` is
  *   `2d_create` / `2d_render`.
  *
- * A new endpoint is pinned to `'current'` unless created otherwise; an endpoint
- * that predates the current names stays on `'legacy'` until re-pinned.
+ * Pass it on create to pin an endpoint yourself. Left out, the pin follows the
+ * spelling of the event types you subscribe to: a list written in the family
+ * names (`photo_mockup.*` / `photo_mockup_render.*`) pins the endpoint to
+ * `'current'`, a list written in the earlier names (`2d_mockup.*` /
+ * `2d_render.*`) to `'legacy'`, and an empty or mixed list to `'legacy'` --
+ * so subscribing the way your handler already reads keeps it reading. An
+ * endpoint that predates the current names stays on `'legacy'` until re-pinned.
  */
 export type WebhookEventNaming = 'legacy' | 'current'
 
@@ -1064,9 +1069,10 @@ export interface CreateWebhookEndpointParams {
   /** Optional description. */
   description?: string
   /**
-   * Which spelling of the photo-mockup events this endpoint receives. Omit to
-   * take the API default (`'current'`); pass `'legacy'` for a handler that
-   * still expects `2d_mockup.*` / `2d_render.*`.
+   * Which spelling of the photo-mockup events this endpoint receives. Omit it
+   * and the pin follows `eventTypes`: family names give `'current'`, the
+   * earlier `2d_mockup.*` / `2d_render.*` names give `'legacy'`, an empty or
+   * mixed list gives `'legacy'`. Pass it to pin the endpoint yourself.
    */
   eventNaming?: WebhookEventNaming
 }
