@@ -81,3 +81,68 @@ export const endpoint: WebhookEndpoint = {
   eventNaming: 'legacy',
   enabled: true,
 }
+
+// Family type names: each is the same shape as the name it stands beside, so a
+// caller can switch spelling without a cast.
+import type {
+  AIAdjustments,
+  AIPlacement,
+  AIPrintArea,
+  AIPrintFile,
+  AIRenderParams,
+  AIRenderResult,
+  Create2DMockupParams,
+  CreatePhotoMockupParams,
+  CreatePhotoMockupResult,
+  List2dMockupsParams,
+  ListPhotoMockupsParams,
+  PhotoMockup,
+  PhotoMockupAdjustments,
+  PhotoMockupDetails,
+  PhotoMockupListResult,
+  PhotoMockupPlacement,
+  PhotoMockupPrintArea,
+  PhotoMockupPrintAreaInput,
+  PhotoMockupPrintFile,
+  PhotoMockupQuad,
+  PhotoMockupRenderParams,
+  PhotoMockupRenderResult,
+  PhotoMockupSurface,
+  TwoDFullSurface,
+  TwoDMockup,
+  TwoDMockupDetails,
+  TwoDMockupListResult,
+  TwoDMockupQuad,
+  TwoDPrintAreaInput,
+  Update2DPrintAreasResult,
+  UpdatePhotoMockupPrintAreasResult,
+  WaitFor2DMockupOptions,
+  WaitForPhotoMockupOptions,
+} from '../src/index'
+
+type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+  ? true
+  : false
+
+export const familyNamesAreTheSameShapes: [
+  Same<PhotoMockup, TwoDMockup>,
+  Same<PhotoMockupDetails, TwoDMockupDetails>,
+  Same<PhotoMockupQuad, TwoDMockupQuad>,
+  Same<PhotoMockupSurface, TwoDFullSurface>,
+  Same<PhotoMockupPrintAreaInput, TwoDPrintAreaInput>,
+  Same<PhotoMockupListResult, TwoDMockupListResult>,
+  Same<ListPhotoMockupsParams, List2dMockupsParams>,
+  Same<CreatePhotoMockupParams, Create2DMockupParams>,
+  Same<CreatePhotoMockupResult, Create2DMockupResult>,
+  Same<WaitForPhotoMockupOptions, WaitFor2DMockupOptions>,
+  Same<UpdatePhotoMockupPrintAreasResult, Update2DPrintAreasResult>,
+  Same<PhotoMockupRenderParams, AIRenderParams>,
+  Same<PhotoMockupRenderResult, AIRenderResult>,
+  Same<PhotoMockupPrintArea, AIPrintArea>,
+  Same<PhotoMockupPrintFile, AIPrintFile>,
+  Same<PhotoMockupAdjustments, AIAdjustments>,
+  Same<PhotoMockupPlacement, AIPlacement>,
+] = [
+  true, true, true, true, true, true, true, true, true, true, true, true, true,
+  true, true, true, true,
+]
