@@ -5,6 +5,45 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-09-19
+
+### Added
+- `client.photoMockups` and `client.psdMockups`, the family names of the two
+  mockup resources. `client.photoMockups` is the object `client.ai` was;
+  `client.psdMockups` is the object `client.mockups` was.
+- Family type names beside the earlier ones: `PhotoMockup`,
+  `PhotoMockupDetails`, `PhotoMockupQuad`, `PhotoMockupSurface`,
+  `PhotoMockupPrintAreaInput`, `PhotoMockupListResult`,
+  `ListPhotoMockupsParams`, `CreatePhotoMockupParams`,
+  `CreatePhotoMockupResult`, `WaitForPhotoMockupOptions`,
+  `UpdatePhotoMockupPrintAreasResult`, `PhotoMockupRenderParams`,
+  `PhotoMockupRenderResult`, `PhotoMockupPrintArea`, `PhotoMockupPrintFile`,
+  `PhotoMockupAdjustments` and `PhotoMockupPlacement`. Each is the same shape
+  as the name it stands beside; the earlier names stay exported.
+
+### Changed
+- Requests travel on the family paths: `client.photoMockups` posts to
+  `/api/v1/photo-mockups` (was `/api/v1/sudoai/2d-mockups`) and
+  `client.psdMockups` to `/api/v1/psd-mockups` (was `/api/v1/mockups`). The
+  API keeps serving the earlier paths, so a project pinned to 2.6.x is not
+  affected.
+- **Job kinds.** Because requests now travel on the family path, a job
+  submitted through this SDK is named by its family: an async
+  `photoMockups.create()` resolves with `kind: 'photo_mockup_create'` and an
+  async `photoMockups.render()` with `kind: 'photo_mockup_render'`, where 2.6.x
+  returned `'2d_create'` / `'2d_render'`. Code that compares `job.kind` against
+  a `2d_*` literal must compare against the family name (or both). `JobKind`
+  keeps both spellings, `jobs.list({ kind })` with either returns both, and
+  webhook event names are untouched: an endpoint keeps the spelling it is
+  pinned to (`eventNaming`).
+
+### Deprecated
+- `client.ai` and `client.mockups`. Both keep working and return the very same
+  objects as `client.photoMockups` / `client.psdMockups`; the first access to
+  each emits a one-time `DeprecationWarning` naming the replacement.
+
+Nothing was removed.
+
 ## [2.6.0] - 2026-09-18
 
 ### Added

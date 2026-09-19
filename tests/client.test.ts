@@ -46,9 +46,9 @@ describe('SudoMock client', () => {
 
   it('exposes resource namespaces', () => {
     const client = createClient()
-    expect(client.mockups).toBeDefined()
+    expect(client.psdMockups).toBeDefined()
     expect(client.renders).toBeDefined()
-    expect(client.ai).toBeDefined()
+    expect(client.photoMockups).toBeDefined()
     expect(client.uploads).toBeDefined()
     expect(client.account).toBeDefined()
     expect(client.studio).toBeDefined()
@@ -70,7 +70,7 @@ describe('client identity', () => {
   function captureListHeaders(): () => Headers | undefined {
     let captured: Headers | undefined
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/mockups`, ({ request }) => {
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, ({ request }) => {
         captured = request.headers
         return HttpResponse.json({
           success: true,
@@ -89,7 +89,7 @@ describe('client identity', () => {
   it('sends X-SudoMock-Client and User-Agent as node-sdk/<version> on every request', async () => {
     const headers = captureListHeaders()
 
-    await createClient().mockups.list()
+    await createClient().psdMockups.list()
 
     expect(headers()?.get('X-SudoMock-Client')).toBe(`node-sdk/${packageVersion}`)
     expect(headers()?.get('User-Agent')).toBe(`node-sdk/${packageVersion}`)
@@ -108,7 +108,7 @@ describe('client identity', () => {
     try {
       const headers = captureListHeaders()
 
-      await createClient().mockups.list()
+      await createClient().psdMockups.list()
 
       expect(headers()?.get('X-SudoMock-Client')).toBe(`node-sdk/${packageVersion}`)
       expect(headers()?.get('User-Agent')).not.toBe(CLIENT_ID)
@@ -128,7 +128,7 @@ describe('client identity', () => {
 
     await transport.request({
       method: 'GET',
-      path: '/api/v1/mockups',
+      path: '/api/v1/psd-mockups',
       headers: { accept: 'application/json; charset=utf-8' },
     })
 
@@ -144,12 +144,12 @@ describe('client identity', () => {
 describe('authentication', () => {
   it('throws AuthenticationError on 401', async () => {
     const client = new SudoMock('sm_bad_key', { baseUrl: TEST_BASE_URL })
-    await expect(client.mockups.list()).rejects.toThrow(AuthenticationError)
+    await expect(client.psdMockups.list()).rejects.toThrow(AuthenticationError)
   })
 
   it('does not expose engine diagnostics from API errors', async () => {
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/mockups`, () =>
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, () =>
         HttpResponse.json(
           {
             detail: 'Private model prompt failed for mask_uuid.',
@@ -160,7 +160,7 @@ describe('authentication', () => {
       ),
     )
 
-    const error = await createClient().mockups.list().catch((caught: unknown) => caught)
+    const error = await createClient().psdMockups.list().catch((caught: unknown) => caught)
     expect(error).toMatchObject({
       message: 'The request could not be completed.',
       code: 'PROCESSING_FAILED',
@@ -175,7 +175,7 @@ describe('authentication', () => {
 describe('rate limiting', () => {
   it('throws RateLimitError on 429 with retryAfter', async () => {
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/mockups`, () => {
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, () => {
         return HttpResponse.json(
           { detail: 'Too many requests' },
           {
@@ -188,7 +188,7 @@ describe('rate limiting', () => {
 
     const client = createClient({ maxRetries: 0 })
     try {
-      await client.mockups.list()
+      await client.psdMockups.list()
       expect.fail('Should have thrown')
     } catch (err) {
       expect(err).toBeInstanceOf(RateLimitError)
@@ -256,7 +256,7 @@ describe('retry', () => {
   it('does NOT retry on 400 (client error)', async () => {
     let attempt = 0
     server.use(
-      http.get(`${TEST_BASE_URL}/api/v1/mockups/:uuid`, () => {
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups/:uuid`, () => {
         attempt++
         return HttpResponse.json(
           { detail: 'Bad request' },
@@ -267,7 +267,7 @@ describe('retry', () => {
 
     const client = createClient({ maxRetries: 3 })
     await expect(
-      client.mockups.get('some-uuid'),
+      client.psdMockups.get('some-uuid'),
     ).rejects.toThrow(SudoMockError)
     expect(attempt).toBe(1) // no retries for client errors
   })

@@ -139,10 +139,11 @@ function wirePlacement(
 }
 
 /**
- * SudoAI 2D mockups (`client.ai`).
+ * Photo mockups (`client.photoMockups`).
  *
- * Create and render reusable 2D mockups, and manage your 2D-mockup catalog.
- * Creation costs 25 credits. Rendering costs 5 credits per call.
+ * Create reusable mockups from product photos, render artwork onto them, and
+ * manage that catalog. Creation costs 25 credits. Rendering costs 5 credits
+ * per call.
  */
 export class AIResource {
   constructor(private readonly client: HttpClient) {}
@@ -162,7 +163,7 @@ export class AIResource {
    *
    * @example Synchronous (default)
    * ```ts
-   * const mockup = await client.ai.create({
+   * const mockup = await client.photoMockups.create({
    *   sourceUrl: 'https://example.com/product.jpg',
    *   name: 'Front view',
    *   idempotencyKey: 'front-view-v1',
@@ -172,11 +173,11 @@ export class AIResource {
    *
    * @example Asynchronous
    * ```ts
-   * const job = await client.ai.create({
+   * const job = await client.photoMockups.create({
    *   sourceUrl: 'https://example.com/product.jpg',
    *   isAsync: true,
    * })
-   * const mockup = await client.ai.waitForReady(job)
+   * const mockup = await client.photoMockups.waitForReady(job)
    * ```
    */
   create(params: Create2DMockupParams & { isAsync: true }): Promise<Job>
@@ -210,7 +211,7 @@ export class AIResource {
       TwoDMockupDetails | Job
     >({
       method: 'POST',
-      path: '/api/v1/sudoai/2d-mockups',
+      path: '/api/v1/photo-mockups',
       body,
       headers: { 'Idempotency-Key': idempotencyKey },
     })
@@ -268,7 +269,7 @@ export class AIResource {
   /**
    * Render artwork (or a color) onto an existing 2D mockup.
    *
-   * Targets `POST /api/v1/sudoai/2d-mockups/{mockupId}/render` (the mockup id
+   * Targets `POST /api/v1/photo-mockups/{mockupId}/render` (the mockup id
    * lives in the path). Target a saved print area with `uuid` -- a bounded zone
    * drawn on the product, which takes a `fit` or an explicit box -- or a product
    * surface with `surfaceUuid`, which takes a `coverage` percentage. A product
@@ -279,13 +280,14 @@ export class AIResource {
    * {@link AIRenderResult} (the rendered `printFiles` plus a `renderUuid` you
    * can use to correlate the render with webhook / transaction records). Pass
    * `isAsync: true` to enqueue the render instead: the API responds with
-   * HTTP 202 and this method resolves with a {@link Job} of kind `'2d_render'`
+   * HTTP 202 and this method resolves with a {@link Job} of kind
+   * `'photo_mockup_render'`
    * you await with `client.jobs.waitForJob(job.jobId)` (or poll via
    * `client.jobs`).
    *
    * @example Synchronous (default)
    * ```ts
-   * const result = await client.ai.render({
+   * const result = await client.photoMockups.render({
    *   mockupId: 'mockup-uuid',
    *   printAreas: [{
    *     uuid: 'print-area-uuid',
@@ -297,7 +299,7 @@ export class AIResource {
    *
    * @example Asynchronous
    * ```ts
-   * const job = await client.ai.render({
+   * const job = await client.photoMockups.render({
    *   mockupId: 'mockup-uuid',
    *   printAreas: [{ uuid: 'print-area-uuid', artworkUrl: '...' }],
    *   isAsync: true,
@@ -350,7 +352,7 @@ export class AIResource {
       AIRenderResult | Job
     >({
       method: 'POST',
-      path: `/api/v1/sudoai/2d-mockups/${params.mockupId}/render`,
+      path: `/api/v1/photo-mockups/${params.mockupId}/render`,
       body,
       timeout: AI_RENDER_TIMEOUT,
     })
@@ -382,7 +384,7 @@ export class AIResource {
    *
    * @example
    * ```ts
-   * const { mockups, total } = await client.ai.list({ limit: 50 })
+   * const { mockups, total } = await client.photoMockups.list({ limit: 50 })
    * ```
    */
   async list(
@@ -398,7 +400,7 @@ export class AIResource {
       offset?: number
     }>({
       method: 'GET',
-      path: '/api/v1/sudoai/2d-mockups',
+      path: '/api/v1/photo-mockups',
       query: {
         limit: params.limit,
         offset: params.offset,
@@ -421,7 +423,7 @@ export class AIResource {
   async get(mockupId: string): Promise<TwoDMockupDetails> {
     const mockup = await this.client.request<TwoDMockupDetails>({
       method: 'GET',
-      path: `/api/v1/sudoai/2d-mockups/${mockupId}`,
+      path: `/api/v1/photo-mockups/${mockupId}`,
     })
     return publicMockupDetails(mockup)
   }
@@ -442,7 +444,7 @@ export class AIResource {
 
     const result = await this.client.request<Update2DPrintAreasResult>({
       method: 'PUT',
-      path: `/api/v1/sudoai/2d-mockups/${mockupId}/print-areas`,
+      path: `/api/v1/photo-mockups/${mockupId}/print-areas`,
       body: { printAreas },
     })
     return {
@@ -457,7 +459,7 @@ export class AIResource {
   async delete(mockupId: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/sudoai/2d-mockups/${mockupId}`,
+      path: `/api/v1/photo-mockups/${mockupId}`,
     })
   }
 }
