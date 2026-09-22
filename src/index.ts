@@ -227,6 +227,7 @@ export type {
   SubscriptionInfo,
   UsageInfo,
   ApiKeyInfo,
+  OrganizationInfo,
   CreateSessionParams,
   SessionResult,
   StudioSessionUi,
