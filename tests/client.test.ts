@@ -10,7 +10,12 @@ import {
   ConnectionError,
   TimeoutError,
 } from '../src/errors'
-import { TEST_API_KEY, TEST_BASE_URL, server } from './setup'
+import {
+  MOCK_ACCOUNT_RESPONSE,
+  TEST_API_KEY,
+  TEST_BASE_URL,
+  server,
+} from './setup'
 
 function createClient(overrides: Record<string, unknown> = {}) {
   return new SudoMock(TEST_API_KEY, { baseUrl: TEST_BASE_URL, ...overrides })
@@ -345,6 +350,38 @@ describe('case conversion', () => {
     const exportOpts = capturedBody['export_options'] as Record<string, unknown>
     expect(exportOpts['image_format']).toBe('webp')
     expect(exportOpts['image_size']).toBe(1080)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Account allowlist
+// ---------------------------------------------------------------------------
+
+describe('account', () => {
+  // account.get() rebuilds the response key by key, so a block the map does not
+  // name vanishes without an error. That shipped once (CHANGELOG 2.5.1).
+  it('surfaces organization when the API sends it', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/me`, () =>
+        HttpResponse.json({
+          ...MOCK_ACCOUNT_RESPONSE,
+          data: {
+            ...MOCK_ACCOUNT_RESPONSE.data,
+            organization: {
+              id: '55555555-5555-5555-5555-555555555555',
+              name: 'Test Organization',
+              private_state: 'internal',
+            },
+          },
+        }),
+      ),
+    )
+
+    const result = await createClient().account.get()
+    expect(result.organization).toEqual({
+      id: '55555555-5555-5555-5555-555555555555',
+      name: 'Test Organization',
+    })
   })
 })
 

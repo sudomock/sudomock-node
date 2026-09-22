@@ -1199,11 +1199,24 @@ export interface ApiKeyInfo {
   totalRequests: number
 }
 
+export interface OrganizationInfo {
+  /** Organization UUID. */
+  id: string
+  name: string
+}
+
 export interface AccountResult {
   account: AccountInfo
   subscription: SubscriptionInfo
   usage: UsageInfo
   apiKey: ApiKeyInfo
+  /**
+   * The organization the API key belongs to. The plan, the credits and the
+   * prepaid balance on this result are that organization's.
+   *
+   * Optional: check it before reading `id` or `name`.
+   */
+  organization?: OrganizationInfo
 }
 
 // ---------------------------------------------------------------------------
