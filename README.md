@@ -439,6 +439,7 @@ console.log(account.usage.creditsLimit)         // 5000  (Starter 5K)
 console.log(account.usage.prepaidBalance)       // 12.5
 console.log(account.usage.prepaidBalanceCurrency) // 'USD'
 console.log(account.apiKey.totalRequests)       // 1234
+console.log(account.organization?.name)         // 'Acme Prints'
 ```
 
 An account is funded either by a subscription allowance or by a prepaid balance,
