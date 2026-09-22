@@ -5,6 +5,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-09-22
+
+### Added
+- `AccountResult.organization`: the organization the API key belongs to, as
+  `{ id, name }`, with the exported `OrganizationInfo` type. The plan, the
+  credits and the prepaid balance `account.get()` reports are that
+  organization's. The field is optional: check it before reading `id` or `name`.
+
+Nothing was removed or renamed.
+
 ## [2.7.1] - 2026-09-19
 
 ### Fixed

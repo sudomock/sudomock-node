@@ -71,6 +71,16 @@ export class AccountResource {
         lastUsedAt: result.apiKey.lastUsedAt,
         totalRequests: result.apiKey.totalRequests,
       },
+      // Same allowlist rule as `usage` above: without this block the API's
+      // `organization` is dropped without a trace. Left out, not defaulted,
+      // when the API does not send it, so the optional type stays honest
+      // against a deployment that predates the field.
+      ...(result.organization && {
+        organization: {
+          id: result.organization.id,
+          name: result.organization.name,
+        },
+      }),
     }
   }
 }
