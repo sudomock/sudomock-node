@@ -468,7 +468,7 @@ fraction, so it has no denominator to be a percentage of.
 ### Pricing in one paragraph
 
 Pay as you go is the entry tier and needs no subscription: one PSD render costs
-$0.10, so $1 covers 10, and the minimum first payment is $5. 2D Mockups and video
+$0.05, so $1 covers 20, and the minimum first payment is $5. 2D Mockups and video
 are priced by what they cost to produce, not at the flat render rate. Volume plans
 start at $25/month for 5,000 renders. A new account gets 500 credits once and no
 card is required to spend them, but until a card is verified its renders are
