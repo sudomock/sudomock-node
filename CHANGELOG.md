@@ -5,6 +5,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-05
+
+### Added
+- `SmartObject.smartObjects` and `SmartObject.textLayers`: the smart objects
+  and text layers inside a smart object, returned by `psdMockups.get()`,
+  `psdMockups.list()`, `psdMockups.update()` and `uploads.create()`. A nested smart
+  object has the same shape as a top level one; its `position` and `quad` are
+  in the parent smart object's own pixel space and its `size` is its own. Fill
+  a nested slot by its `uuid` in the render request, in the same
+  `smartObjects` and `textLayers` arrays. Both fields are absent when a smart
+  object holds nothing, so existing results are unchanged.
+- A render request that fills a smart object and a slot inside it together is
+  rejected with the error code `NESTED_SLOT_CONFLICT`.
+- An upload may carry the warning code `PSD_NESTED_CONTENTS_UNAVAILABLE` when
+  the contents of a smart object could not be read.
+
+Nothing was removed or renamed.
+
 ## [2.8.1] - 2026-09-24
 
 ### Changed
