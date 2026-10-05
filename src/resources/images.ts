@@ -14,8 +14,8 @@ export class ImagesResource {
   constructor(private readonly client: HttpClient) {}
 
   /**
-   * Remove the background from an image; returns a signed transparent-PNG
-   * cutout URL valid for 7 days.
+   * Remove the background from an image; returns a public transparent-PNG
+   * cutout URL that stays available for 7 days.
    *
    * Supply exactly one of `url` or `base64`. The returned `url` is ready to
    * pass straight back as render artwork. To clean artwork inline during a

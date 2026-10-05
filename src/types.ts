@@ -168,6 +168,7 @@ export interface MockupListResult {
 
 /** What a layer is, as the layer list reports it. */
 export type MockupLayerKind =
+  | 'artboard'
   | 'group'
   | 'smart_object'
   | 'text'
@@ -188,7 +189,8 @@ export interface MockupLayer {
    * The layers inside this layer, front-most first: a group's own layers, or
    * the layers of a smart object's contents when those contents hold layers
    * you can fill. Copies of one smart object share their contents, which are
-   * listed under one copy. Empty for every other layer.
+   * listed under one copy. An artboard's own layers are listed right before
+   * the artboard at the top level, not here. Empty for every other layer.
    */
   children: MockupLayer[]
 }
@@ -771,7 +773,7 @@ export type RemoveBackgroundParams = {
 
 /** The transparent-PNG cutout produced by `client.images.removeBackground()`. */
 export interface RemoveBackgroundResult {
-  /** Signed URL of the transparent-PNG cutout, valid for 7 days. */
+  /** Public URL of the transparent-PNG cutout, available for 7 days. */
   url: string
   /** Cutout width in pixels. */
   width: number
