@@ -88,6 +88,14 @@ export interface SmartObject {
   blendMode?: string
   /** Number of instances of this smart object in the PSD, when present. */
   instanceCount?: number | null
+  /**
+   * Smart objects inside this one, each with this same shape. Their `position`
+   * and `quad` are in this smart object's own pixel space. Fill them by `uuid`
+   * in the render request like any other slot. Absent when there are none.
+   */
+  smartObjects?: SmartObject[]
+  /** Text layers inside this smart object. Absent when there are none. */
+  textLayers?: TextLayer[]
 }
 
 // ---------------------------------------------------------------------------
