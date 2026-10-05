@@ -300,10 +300,19 @@ export interface TextLayerInput {
 export interface CreateRenderParams {
   /** Mockup UUID to render */
   mockupId: string
-  /** Smart objects with assets. Optional when textLayers is provided. */
+  /** Smart objects with assets. Optional when textLayers or hiddenLayers is provided. */
   smartObjects?: RenderSmartObjectInput[]
-  /** Text layer replacements. Optional when smartObjects is provided. */
+  /** Text layer replacements. Optional when smartObjects or hiddenLayers is provided. */
   textLayers?: TextLayerInput[]
+  /**
+   * Up to 50 layer UUIDs to leave out of this render, as
+   * `GET /api/v1/psd-mockups/{uuid}/layers` lists them. A smart object, text
+   * layer or group has the same UUID there as in the mockup response. Hiding
+   * a group hides every layer inside it, and a layer clipped to a hidden layer
+   * is hidden with it. A layer cannot be hidden and edited in the same render.
+   * Works on its own.
+   */
+  hiddenLayers?: string[]
   /** Export options */
   exportOptions?: ExportOptions
   /** Optional label for the export file */

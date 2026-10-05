@@ -148,6 +148,21 @@ for (const render of renders) {
 }
 ```
 
+#### Hide layers for one render
+
+`hiddenLayers` leaves up to 50 layers out of a single render; the template
+itself does not change. Take the UUIDs from
+`GET /api/v1/psd-mockups/{uuid}/layers`, which lists every layer of the
+template. Hiding a group hides every layer inside it, and `hiddenLayers` works
+on its own.
+
+```typescript
+const render = await client.renders.create({
+  mockupId: 'mockup-uuid',
+  hiddenLayers: ['group-layer-uuid'],
+})
+```
+
 ### Async Renders & Jobs
 
 Pass `isAsync: true` to enqueue a render instead of blocking. The API responds
