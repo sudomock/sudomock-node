@@ -168,7 +168,9 @@ export class MockupsResource {
   /**
    * List every layer of a mockup, nested the way Photoshop's Layers panel
    * shows them and front-most first. A smart object whose contents hold
-   * layers you can fill lists those layers as its children. Pass a layer's
+   * layers you can fill lists those layers as its children. An artboard has
+   * kind `artboard`, and its own layers are listed right before it at the top
+   * level rather than as its children. Pass a layer's
    * `uuid` in `hiddenLayers` on `client.renders.create` to leave it out of
    * one render. Costs no credits.
    *
