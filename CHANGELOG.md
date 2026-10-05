@@ -6,11 +6,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `psdMockups.layers(uuid)`: every layer of a PSD mockup, nested the way
+  Photoshop's Layers panel shows them and front-most first, each with `uuid`,
+  `name`, `kind`, `visible` and `children`. A smart object whose contents hold
+  layers you can fill lists those layers as its children. Costs no credits.
+  New types: `MockupLayer`, `MockupLayerKind` and `MockupLayersResult`.
 - `renders.create` takes `hiddenLayers`: up to 50 layer UUIDs, as
-  `GET /api/v1/psd-mockups/{uuid}/layers` lists them, to leave out of one
-  render. Hiding a group hides every layer inside it, and a layer clipped to a
-  hidden layer is hidden with it. It is sent as `hidden_layers` and works on its
-  own. A render that does not set it sends the same request as before.
+  `psdMockups.layers()` lists them, to leave out of one render. Hiding a group
+  hides every layer inside it, a layer clipped to a hidden layer is hidden
+  with it, and a layer hidden inside a smart object's contents is hidden in
+  every copy of that smart object. It is sent as `hidden_layers` and works on
+  its own. A render that does not set it sends the same request as before.
 
 ## [2.9.0] - 2026-10-05
 

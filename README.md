@@ -75,6 +75,9 @@ const result = await client.psdMockups.list({
 const mockup = await client.psdMockups.get('uuid')
 console.log(mockup.smartObjects)
 
+// List every layer, nested as in Photoshop's Layers panel
+const { layers } = await client.psdMockups.layers('uuid')
+
 // Update mockup name
 const updated = await client.psdMockups.update('uuid', { name: 'New Name' })
 
@@ -151,15 +154,19 @@ for (const render of renders) {
 #### Hide layers for one render
 
 `hiddenLayers` leaves up to 50 layers out of a single render; the template
-itself does not change. Take the UUIDs from
-`GET /api/v1/psd-mockups/{uuid}/layers`, which lists every layer of the
-template. Hiding a group hides every layer inside it, and `hiddenLayers` works
-on its own.
+itself does not change. `client.psdMockups.layers()` lists every layer of the
+template with its UUID, including the layers inside a smart object's contents.
+Hiding a group hides every layer inside it, a layer hidden inside a smart
+object is hidden in every copy of it, and `hiddenLayers` works on its own.
 
 ```typescript
+const { layers } = await client.psdMockups.layers('mockup-uuid')
+const badge = layers.find((layer) => layer.name === 'Sleeve badge')
+if (!badge) throw new Error('Sleeve badge not found')
+
 const render = await client.renders.create({
   mockupId: 'mockup-uuid',
-  hiddenLayers: ['group-layer-uuid'],
+  hiddenLayers: [badge.uuid],
 })
 ```
 

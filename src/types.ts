@@ -163,6 +163,43 @@ export interface MockupListResult {
 }
 
 // ---------------------------------------------------------------------------
+// Mockup Layers
+// ---------------------------------------------------------------------------
+
+/** What a layer is, as the layer list reports it. */
+export type MockupLayerKind =
+  | 'group'
+  | 'smart_object'
+  | 'text'
+  | 'pixel'
+  | 'shape'
+  | 'fill'
+  | 'adjustment'
+
+/** One layer of a PSD mockup, with the layers inside it. */
+export interface MockupLayer {
+  /** Pass it in `hiddenLayers` to leave this layer out of one render. */
+  uuid: string
+  name: string
+  kind: MockupLayerKind
+  /** Whether the layer shows in the template as uploaded. */
+  visible: boolean
+  /**
+   * The layers inside this layer, front-most first: a group's own layers, or
+   * the layers of a smart object's contents when those contents hold layers
+   * you can fill. Copies of one smart object share their contents, which are
+   * listed under one copy. Empty for every other layer.
+   */
+  children: MockupLayer[]
+}
+
+export interface MockupLayersResult {
+  mockupUuid: string
+  /** Top-level layers, front-most first, as Photoshop's Layers panel lists them. */
+  layers: MockupLayer[]
+}
+
+// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
@@ -306,11 +343,14 @@ export interface CreateRenderParams {
   textLayers?: TextLayerInput[]
   /**
    * Up to 50 layer UUIDs to leave out of this render, as
-   * `GET /api/v1/psd-mockups/{uuid}/layers` lists them. A smart object, text
-   * layer or group has the same UUID there as in the mockup response. Hiding
-   * a group hides every layer inside it, and a layer clipped to a hidden layer
-   * is hidden with it. A layer cannot be hidden and edited in the same render.
-   * Works on its own.
+   * `client.psdMockups.layers()` lists them, including the layers inside a
+   * smart object's contents. A smart object, text layer or group has the same
+   * UUID there as in the mockup response. Hiding a group hides every layer
+   * inside it, and a layer clipped to a hidden layer is hidden with it. A
+   * layer hidden inside a smart object's contents is hidden in every copy of
+   * that smart object. A layer cannot be hidden and edited in the same render,
+   * and a smart object that receives an image cannot have layers inside it
+   * hidden. Works on its own.
    */
   hiddenLayers?: string[]
   /** Export options */
