@@ -52,6 +52,7 @@ export class RendersResource {
       mockupUuid: params.mockupId,
       smartObjects: params.smartObjects,
       textLayers: params.textLayers,
+      hiddenLayers: params.hiddenLayers,
       exportOptions: params.exportOptions,
       exportLabel: params.exportLabel,
       isAsync: params.isAsync,
