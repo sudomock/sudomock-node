@@ -375,8 +375,9 @@ await client.photoMockups.delete('mockup-uuid')
 
 ### Background Removal (`client.images`)
 
-Remove the background from an image; returns a signed transparent-PNG cutout URL
-valid for 7 days that you can pass straight back as render artwork. Supply
+Remove the background from an image; returns a public transparent-PNG cutout URL
+that stays available for 7 days and that you can pass straight back as render
+artwork. Supply
 exactly one of `url` or `base64`. Costs **25 credits** per image; credits are
 refunded automatically if processing fails.
 
@@ -385,7 +386,7 @@ const cutout = await client.images.removeBackground({
   url: 'https://example.com/product-photo.jpg',
 })
 
-console.log(cutout.url)            // signed transparent-PNG URL
+console.log(cutout.url)            // public transparent-PNG URL
 console.log(cutout.width, cutout.height)
 console.log(cutout.creditsCharged) // 25
 
