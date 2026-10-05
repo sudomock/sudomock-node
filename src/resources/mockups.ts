@@ -2,10 +2,22 @@ import { publicWarnings, type HttpClient } from '../client'
 import type {
   ListMockupsParams,
   Mockup,
+  MockupLayer,
+  MockupLayersResult,
   MockupListResult,
   SmartObject,
   TextLayer,
 } from '../types'
+
+function toPublicLayer(layer: MockupLayer): MockupLayer {
+  return {
+    uuid: layer.uuid,
+    name: layer.name,
+    kind: layer.kind,
+    visible: layer.visible,
+    children: (layer.children ?? []).map(toPublicLayer),
+  }
+}
 
 function toPublicTextLayer(layer: TextLayer): TextLayer {
   return {
@@ -151,6 +163,30 @@ export class MockupsResource {
       path: `${this.basePath}/${uuid}`,
     })
     return toPublicMockup(mockup)
+  }
+
+  /**
+   * List every layer of a mockup, nested the way Photoshop's Layers panel
+   * shows them and front-most first. A smart object whose contents hold
+   * layers you can fill lists those layers as its children. Pass a layer's
+   * `uuid` in `hiddenLayers` on `client.renders.create` to leave it out of
+   * one render. Costs no credits.
+   *
+   * @example
+   * ```ts
+   * const { layers } = await client.psdMockups.layers('uuid')
+   * console.log(layers.map((layer) => `${layer.kind}: ${layer.name}`))
+   * ```
+   */
+  async layers(uuid: string): Promise<MockupLayersResult> {
+    const result = await this.client.request<MockupLayersResult>({
+      method: 'GET',
+      path: `${this.basePath}/${uuid}/layers`,
+    })
+    return {
+      mockupUuid: result.mockupUuid,
+      layers: result.layers.map(toPublicLayer),
+    }
   }
 
   /**
