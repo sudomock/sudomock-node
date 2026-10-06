@@ -180,6 +180,7 @@ export type {
   SmartObjectColor,
   AdjustmentLayers,
   ExportOptions,
+  PsdExportOptions,
   PrintFile,
   RenderResult,
   AIRenderParams,
