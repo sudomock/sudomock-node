@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-10-06
+
 ### Added
 - `psdMockups.layers(uuid)`: every layer of a PSD mockup, nested the way
   Photoshop's Layers panel shows them and front-most first, each with `uuid`,
