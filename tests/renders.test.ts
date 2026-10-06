@@ -93,6 +93,26 @@ describe('renders.create()', () => {
     expect(Object.keys(exportOpts)).not.toContain('d_p_i')
   })
 
+  it('sends imageSize "original" as export_options.image_size unchanged', async () => {
+    let capturedBody: Record<string, unknown> = {}
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(MOCK_RENDER_RESPONSE)
+      }),
+    )
+
+    const client = createClient()
+    await client.renders.create({
+      mockupId: 'test-uuid',
+      smartObjects: [{ uuid: 'so-uuid' }],
+      exportOptions: { imageFormat: 'png', imageSize: 'original' },
+    })
+
+    const exportOpts = capturedBody['export_options'] as Record<string, unknown>
+    expect(exportOpts['image_size']).toBe('original')
+  })
+
   it('sends the asset remove_background flag in snake_case', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
