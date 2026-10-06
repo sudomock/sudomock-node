@@ -5,6 +5,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-10-06
+
+### Added
+- `renders.create` and the render mode of `renders.createVideo` take
+  `exportOptions.imageSize: 'original'`: the render comes out at the PSD's own
+  size and resolution, with the template's own width and, unless `dpi` is set,
+  the resolution the PSD was saved with. Their export options are typed as the
+  new `PsdExportOptions`; `ExportOptions` and the photo mockup render keep a
+  width in pixels, so existing code compiles as before. A template uploaded
+  before this option existed needs to be uploaded again to render at its
+  original size. A render that does not set `'original'` sends the same
+  request as before.
+
 ## [2.10.0] - 2026-10-06
 
 ### Added

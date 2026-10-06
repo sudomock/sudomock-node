@@ -230,6 +230,16 @@ export interface ExportOptions {
   dpi?: number
 }
 
+/** Export options for a PSD mockup render, where `imageSize` can also be `'original'`. */
+export interface PsdExportOptions extends Omit<ExportOptions, 'imageSize'> {
+  /**
+   * Output width in pixels, 100-10000 (default: 2048), or `'original'` for the
+   * PSD's own size and resolution: its own width, and the resolution it was
+   * saved with unless `dpi` is set.
+   */
+  imageSize?: number | 'original'
+}
+
 export interface AssetSize {
   width: number
   height: number
@@ -356,7 +366,7 @@ export interface CreateRenderParams {
    */
   hiddenLayers?: string[]
   /** Export options */
-  exportOptions?: ExportOptions
+  exportOptions?: PsdExportOptions
   /** Optional label for the export file */
   exportLabel?: string
   /**
@@ -1015,7 +1025,7 @@ export interface CreateVideoParams {
   /** Smart objects with assets (render mode; same shape as a still render). */
   smartObjects?: RenderSmartObjectInput[]
   /** Export options for the render-mode input still. */
-  exportOptions?: ExportOptions
+  exportOptions?: PsdExportOptions
   /**
    * Raw-image mode: a public HTTPS image URL to animate directly (mutually
    * exclusive with the render-mode `mockupId` + `smartObjects` inputs).
