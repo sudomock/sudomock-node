@@ -82,7 +82,7 @@ export interface SmartObject {
   position: Position
   printAreaPresets: PrintAreaPreset[]
   layerName?: string | null
-  /** Distorted quad corners (Scale tier only; `null` otherwise). */
+  /** Distorted quad corners (Scale and Enterprise plans; `null` otherwise). */
   quad?: number[][] | null
   /** Layer blend mode (optional on the BE; may be absent). */
   blendMode?: string
