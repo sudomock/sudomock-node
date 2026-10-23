@@ -53,10 +53,11 @@ function publicMockupDetails(mockup: TwoDMockupDetails): TwoDMockupDetails {
   return {
     ...publicMockup(mockup),
     quads: mockup.quads.map(publicQuad),
-    // A surface is named and nothing else. A payload still carrying the
+    // A surface carries its uuid and label. A payload still carrying the
     // retired `coverage` -- a server one deploy behind -- has it dropped here.
     surfaces: mockup.surfaces.map((surface) => ({
       surfaceUuid: surface.surfaceUuid,
+      label: surface.label,
     })),
   }
 }
@@ -105,6 +106,7 @@ function wirePlacement(
     rotation: placement.rotation,
     offsetX: placement.offsetX,
     offsetY: placement.offsetY,
+    tile: placement.tile,
     ...(isPrintArea
       ? { fit: (placement as AIPrintAreaPlacement).fit }
       : { coverage: (placement as AISurfacePlacement).coverage }),
