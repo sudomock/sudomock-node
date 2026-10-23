@@ -278,6 +278,12 @@ export interface SmartObjectAsset {
   /** Custom position for the artwork */
   position?: AssetPosition
   /**
+   * Repeat the artwork as a pattern across the whole smart object. size is one
+   * tile, fit places the artwork inside each tile, and position sets where the
+   * grid starts. Requires size.
+   */
+  tile?: boolean
+  /**
    * Remove the background from this artwork before placing it, isolating the
    * subject onto a clean transparent cutout.
    *
@@ -455,6 +461,12 @@ export interface AIPlacementBase {
   offsetX?: number
   /** Vertical offset in target pixels from the anchor, positive down. */
   offsetY?: number
+  /**
+   * Repeat the artwork as a pattern across the whole target. The sizing answer
+   * (coverage, fit, or width and height) is one tile, and position with
+   * offset_x and offset_y sets where the grid starts. Requires a sizing answer.
+   */
+  tile?: boolean
 }
 
 /**
@@ -685,13 +697,14 @@ export interface TwoDMockupQuad {
 /**
  * One printable product in the photo, addressed directly during render.
  *
- * Nothing here says what kind of surface it is. Being listed under `surfaces`
- * is the whole statement; the fixed `coverage: 'full'` that used to ride along
- * named nothing a caller could act on while reading exactly like a dial they
- * could turn.
+ * There is no `coverage` here: the fixed `coverage: 'full'` that used to ride
+ * along named nothing a caller could act on while reading exactly like a dial
+ * they could turn.
  */
 export interface TwoDFullSurface {
   surfaceUuid: string
+  /** What was detected on this surface, such as "wall" or "pillow". */
+  label?: string | null
 }
 
 /** Replacement geometry for one 2D print area. */
