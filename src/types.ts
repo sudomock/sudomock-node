@@ -284,6 +284,12 @@ export interface SmartObjectAsset {
    */
   tile?: boolean
   /**
+   * Gap between tiles as a percentage of the tile size, 0 to 100. The
+   * horizontal gap is that percent of the tile width, the vertical gap that
+   * percent of the tile height. Used only when tile is true.
+   */
+  tileSpacing?: number
+  /**
    * Remove the background from this artwork before placing it, isolating the
    * subject onto a clean transparent cutout.
    *
@@ -467,6 +473,12 @@ export interface AIPlacementBase {
    * offset_x and offset_y sets where the grid starts. Requires a sizing answer.
    */
   tile?: boolean
+  /**
+   * Gap between tiles as a percentage of the tile size, 0 to 100. The
+   * horizontal gap is that percent of the tile width, the vertical gap that
+   * percent of the tile height. Used only when tile is true.
+   */
+  tileSpacing?: number
 }
 
 /**

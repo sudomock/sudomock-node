@@ -107,6 +107,7 @@ function wirePlacement(
     offsetX: placement.offsetX,
     offsetY: placement.offsetY,
     tile: placement.tile,
+    tileSpacing: placement.tileSpacing,
     ...(isPrintArea
       ? { fit: (placement as AIPrintAreaPlacement).fit }
       : { coverage: (placement as AISurfacePlacement).coverage }),
