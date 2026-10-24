@@ -726,6 +726,18 @@ export interface TwoDPrintAreaInput {
   name?: string
 }
 
+/**
+ * One print area sent to `client.photoMockups.updatePrintAreas()`: the
+ * geometry, and optionally the id of an existing area to keep.
+ */
+export interface TwoDPrintAreaReplacement extends TwoDPrintAreaInput {
+  /**
+   * Id of an existing print area of this mockup to keep its id. Leave it out
+   * for a new area.
+   */
+  printAreaId?: string
+}
+
 /** Updated geometry returned by `client.photoMockups.updatePrintAreas()`. */
 export interface Update2DPrintAreasResult {
   mockupId: string
@@ -862,6 +874,7 @@ export type PhotoMockupDetails = TwoDMockupDetails
 export type PhotoMockupQuad = TwoDMockupQuad
 export type PhotoMockupSurface = TwoDFullSurface
 export type PhotoMockupPrintAreaInput = TwoDPrintAreaInput
+export type PhotoMockupPrintAreaReplacement = TwoDPrintAreaReplacement
 export type PhotoMockupListResult = TwoDMockupListResult
 export type ListPhotoMockupsParams = List2dMockupsParams
 export type CreatePhotoMockupParams = Create2DMockupParams
