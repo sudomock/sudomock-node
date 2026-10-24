@@ -482,7 +482,7 @@ export interface AIPlacementBase {
 }
 
 /**
- * Placement of the artwork across a whole product surface.
+ * Placement of the artwork across a whole surface.
  *
  * Sizing has exactly one answer per request: either a `coverage` percentage of
  * the product, or an explicit `width` + `height` box. A percentage cannot
@@ -566,7 +566,7 @@ export type AIPrintAreaPlacement = AIPlacementBase & {
  */
 export type AIPlacement = AISurfacePlacement | AIPrintAreaPlacement
 
-/** Artwork or color placed on one saved print area or full product surface. */
+/** Artwork or color placed on one saved print area or full surface. */
 export type AIPrintArea = {
   /** URL of the artwork to place. Supply `base64`, `artworkUrl`, OR `color`. */
   artworkUrl?: string
