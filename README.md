@@ -279,8 +279,9 @@ Render artwork onto an existing 2D mockup (no PSD template) and manage your 2D
 mockup catalog. `client.photoMockups.render` posts to
 `/api/v1/photo-mockups/{mockupId}/render` (the mockup id lives in the path)
 and costs **5 credits** per call. Each print area must supply `artworkUrl` OR
-`color`. Use `uuid` for a saved print area -- a bounded zone drawn on the
-product -- or `surfaceUuid` for a product surface, both returned by
+`color`. Use `uuid` for a saved print area (a bounded zone drawn on the
+product) or `surfaceUuid` for a surface (a printable product in the photo, or
+the main wall of a room photo), both returned by
 `client.photoMockups.get()`. A product can have both, and they are separate targets.
 Placement follows the target, and sizing has one answer per request: a surface
 takes a `coverage` percentage or an explicit `width` + `height`, a print area
@@ -386,7 +387,7 @@ const mockup = await client.photoMockups.waitForReady(job, { intervalMs: 2_000 }
 
 Update all print areas on a ready mockup with up to 8 four-point quads (each
 with an optional `name`, **0 credits**). An empty array is accepted only when
-the API has verified every product surface as printable; each of those is then
+the API has verified every surface as printable; each of those is then
 a render target in its own right. An area sent with the `printAreaId` of one of
 the mockup's print areas keeps that id; an area without one gets a new id:
 
