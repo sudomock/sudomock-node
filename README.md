@@ -351,12 +351,14 @@ const mockup = await client.photoMockups.waitForReady(job, { intervalMs: 2_000 }
 Update all print areas on a ready mockup with up to 8 four-point quads (each
 with an optional `name`, **0 credits**). An empty array is accepted only when
 the API has verified every product surface as printable; each of those is then
-a render target in its own right:
+a render target in its own right. An area sent with the `printAreaId` of one of
+the mockup's print areas keeps that id; an area without one gets a new id:
 
 ```typescript
 const updated = await client.photoMockups.updatePrintAreas('mockup-uuid', [{
   points: [[100, 100], [900, 100], [900, 900], [100, 900]],
   name: 'Front',
+  printAreaId: 'existing-print-area-uuid',
 }])
 console.log(updated.printAreas)
 ```

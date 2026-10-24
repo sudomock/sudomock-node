@@ -12,7 +12,7 @@ import type {
   TwoDMockupQuad,
   TwoDMockupListResult,
   List2dMockupsParams,
-  TwoDPrintAreaInput,
+  TwoDPrintAreaReplacement,
   Update2DPrintAreasResult,
   WaitFor2DMockupOptions,
 } from '../types'
@@ -444,11 +444,13 @@ export class AIResource {
    * Replace all print areas on a 2D mockup with up to 8 four-point quads. An
    * empty array is accepted only when the API has verified every product
    * surface as printable; each of those is then a render target in its own
-   * right. Each quad may carry an optional `name`.
+   * right. Each quad may carry an optional `name`. An area sent with the
+   * `printAreaId` of one of this mockup's print areas keeps that id; an area
+   * without one gets a new id.
    */
   async updatePrintAreas(
     mockupId: string,
-    printAreas: readonly TwoDPrintAreaInput[],
+    printAreas: readonly TwoDPrintAreaReplacement[],
   ): Promise<Update2DPrintAreasResult> {
     if (printAreas.length > 8) {
       throw new ValidationError('Provide at most 8 print areas')
