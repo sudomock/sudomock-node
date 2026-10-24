@@ -707,7 +707,8 @@ export interface TwoDMockupQuad {
 }
 
 /**
- * One printable product in the photo, addressed directly during render.
+ * One printable product in the photo, or the main wall of a room photo,
+ * addressed directly during render.
  *
  * There is no `coverage` here: the fixed `coverage: 'full'` that used to ride
  * along named nothing a caller could act on while reading exactly like a dial
@@ -767,7 +768,7 @@ export interface TwoDMockup {
 /** Full 2D mockup returned by `client.photoMockups.get()` and `waitForReady()`. */
 export interface TwoDMockupDetails extends TwoDMockup {
   quads: TwoDMockupQuad[]
-  /** Every printable product in the photo, each a render target on its own. */
+  /** Every printable product in the photo, and the main wall of a room photo, each a render target on its own. */
   surfaces: TwoDFullSurface[]
 }
 
