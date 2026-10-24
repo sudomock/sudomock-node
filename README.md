@@ -122,6 +122,35 @@ console.log(render.url)        // convenience: first file URL
 console.log(render.printFiles) // full array
 ```
 
+#### Repeat the artwork as a pattern
+
+Set `tile: true` on an asset to repeat the artwork across the whole smart
+object. `size` is then one tile, `fit` places the artwork inside each tile, and
+`position` sets where the grid starts. A tile needs a `size`; without one the
+API answers 422. `tileSpacing` leaves a gap between the tiles: a percentage of
+the tile size, 0 to 100, so the horizontal gap is that percent of the tile
+width and the vertical gap that percent of the tile height. It is used only
+when `tile` is true.
+
+```typescript
+const render = await client.renders.create({
+  mockupId: 'mockup-uuid',
+  smartObjects: [{
+    uuid: 'smart-object-uuid',
+    asset: {
+      url: 'https://example.com/pattern.png',
+      fit: 'fill',
+      size: { width: 600, height: 600 },
+      tile: true,
+      tileSpacing: 25,
+    },
+  }],
+})
+```
+
+The render mode of `renders.createVideo` takes the same two fields on its
+smart objects.
+
 #### Batch text personalization
 
 Use an editable text layer from the mockup response to create personalized
@@ -258,6 +287,13 @@ takes a `coverage` percentage or an explicit `width` + `height`, a print area
 takes a `fit` or an explicit `width` + `height`. Anchoring -- `position`,
 `offsetX`, `offsetY`, `rotation` -- belongs to both. The types enforce it, so
 handing one the other's dial does not compile.
+
+`tile: true` on a placement repeats the artwork as a pattern across the whole
+target. The sizing answer (`coverage`, `fit`, or `width` and `height`) is one
+tile, and `position` with `offsetX` and `offsetY` sets where the grid starts.
+`tileSpacing` sets the gap between tiles, as on a PSD asset. Each entry in
+`mockup.surfaces` carries a `label`, what was detected there, such as `pillow`
+or `wall`, so you can tell surfaces apart before you pick one.
 
 #### Render an existing 2D mockup
 
