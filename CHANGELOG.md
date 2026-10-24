@@ -5,6 +5,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `tileSpacing` on a smart object asset (`SmartObjectAsset.tileSpacing`: PSD
+  renders and the render mode of `renders.createVideo`) and on a photo mockup
+  placement (`AIPlacementBase.tileSpacing`) sets the gap between tiles when
+  `tile` is true: a percentage of the tile size from 0 to 100, so the
+  horizontal gap is that percent of the tile width and the vertical gap that
+  percent of the tile height. It is sent as `tile_spacing`, and a value outside
+  0 to 100 is refused with 422. A request without it is sent as before.
+- `photoMockups.updatePrintAreas` takes an optional `printAreaId` on each area
+  (`TwoDPrintAreaReplacement`). An area that carries the id of one of the
+  mockup's print areas keeps that id; an area without one gets a new id. An id
+  that is not one of the mockup's areas, or the same id on two areas, is
+  refused with 422. A call without it is sent as before.
+
 ## [2.12.0] - 2026-10-23
 
 ### Added
