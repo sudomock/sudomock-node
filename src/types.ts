@@ -593,7 +593,7 @@ export type AIPrintArea = {
       placement?: AIPrintAreaPlacement
     }
   | {
-      /** UUID of a product surface -- one printable product in the photo. */
+      /** UUID of a surface: a printable product in the photo, or the main wall of a room photo. */
       surfaceUuid: string
       uuid?: never
       /** Artwork placement across the surface: how much of it to span. */
