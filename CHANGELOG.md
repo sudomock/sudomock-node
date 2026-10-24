@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-10-24
+
 ### Added
 - `tileSpacing` on a smart object asset (`SmartObjectAsset.tileSpacing`: PSD
   renders and the render mode of `renders.createVideo`) and on a photo mockup
