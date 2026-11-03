@@ -22,7 +22,7 @@ export class ImagesResource {
    * render instead, set `removeBackground: true` on the render asset
    * (`renders.create`) or print area (`ai.render`).
    *
-   * Costs 25 credits per image; credits are refunded automatically if
+   * Costs 5 credits per image; credits are refunded automatically if
    * processing fails.
    *
    * @example

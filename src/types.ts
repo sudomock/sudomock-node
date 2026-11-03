@@ -293,7 +293,7 @@ export interface SmartObjectAsset {
    * Remove the background from this artwork before placing it, isolating the
    * subject onto a clean transparent cutout.
    *
-   * Adds 25 credits per unique artwork to the render cost (the same artwork
+   * Adds 5 credits per unique artwork to the render cost (the same artwork
    * reused across several smart objects is charged once). Default: `false`.
    */
   removeBackground?: boolean
@@ -580,7 +580,7 @@ export type AIPrintArea = {
    * Remove the background from this print area's artwork before placing it,
    * isolating the subject onto a clean transparent cutout.
    *
-   * Adds 25 credits per unique artwork to the render cost (the same artwork
+   * Adds 5 credits per unique artwork to the render cost (the same artwork
    * reused across several print areas is charged once). Default: `false`.
    */
   removeBackground?: boolean
