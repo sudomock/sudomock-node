@@ -100,7 +100,7 @@ export const MOCK_REMOVE_BACKGROUND_RESPONSE = {
     url: 'https://cdn.sudomock.com/bg-cutouts/test/cutout.png',
     width: 1200,
     height: 1600,
-    credits_charged: 25,
+    credits_charged: 5,
     private_storage_key: 'cutouts/private.png',
   },
 }

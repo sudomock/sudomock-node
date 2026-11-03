@@ -417,7 +417,7 @@ await client.photoMockups.delete('mockup-uuid')
 Remove the background from an image; returns a public transparent-PNG cutout URL
 that stays available for 7 days and that you can pass straight back as render
 artwork. Supply
-exactly one of `url` or `base64`. Costs **25 credits** per image; credits are
+exactly one of `url` or `base64`. Costs **5 credits** per image; credits are
 refunded automatically if processing fails.
 
 ```typescript
@@ -427,7 +427,7 @@ const cutout = await client.images.removeBackground({
 
 console.log(cutout.url)            // public transparent-PNG URL
 console.log(cutout.width, cutout.height)
-console.log(cutout.creditsCharged) // 25
+console.log(cutout.creditsCharged) // 5
 
 // Reuse the cutout URL across renders for 7 days
 const render = await client.renders.create({
@@ -437,7 +437,7 @@ const render = await client.renders.create({
 ```
 
 To clean artwork inline during a render instead, set `removeBackground: true`
-on the render asset or 2D print area. It adds **25 credits per unique artwork**
+on the render asset or 2D print area. It adds **5 credits per unique artwork**
 to the render (the same artwork reused across several smart objects or print
 areas is charged once).
 
