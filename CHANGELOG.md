@@ -5,6 +5,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `images.checkSeams` checks whether copies of a pattern tile meet without a
+  visible line when it repeats, and where a line appears. It takes exactly one
+  of `url` or `base64` and an optional `cropAspect`, and returns `status`
+  (`seamless`, `faint_seam` or `visible_seam`), `seams` with pixel `ranges`
+  per side, the checked `width` and `height`, `fixable` with
+  `unfixableReason`, and `previousFix`. Seam check: free.
+- `images.fixSeams` takes the same fields and returns a job of kind
+  `seam_fix`, sent with an `Idempotency-Key` (a fresh one unless
+  `idempotencyKey` is given). Seam fix: 60 credits, refunded if the fix fails.
+- `Job` carries `alternativeUrl`, `resultStatus`, `changes` and `stage` for a
+  seam fix. `JobKind` gains `seam_fix` and `WebhookEvent` gains
+  `seam_fix.succeeded` and `seam_fix.failed`.
+
 ## [2.13.1] - 2026-11-03
 
 ### Changed
