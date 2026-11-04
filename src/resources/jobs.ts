@@ -94,6 +94,10 @@ export function toJob(body: unknown): Job {
     audio: raw['audio'] as boolean | null | undefined,
     mockupName: raw['mockupName'] as string | null | undefined,
     posterUrl: raw['posterUrl'] as string | null | undefined,
+    alternativeUrl: raw['alternativeUrl'] as Job['alternativeUrl'],
+    resultStatus: raw['resultStatus'] as Job['resultStatus'],
+    changes: raw['changes'] as Job['changes'],
+    stage: raw['stage'] as Job['stage'],
   }
   return Object.fromEntries(
     Object.entries(publicJob).filter(([, value]) => value !== undefined),

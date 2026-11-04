@@ -832,6 +832,106 @@ export interface RemoveBackgroundResult {
 }
 
 // ---------------------------------------------------------------------------
+// Seam check and seam fix (client.images)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parameters for `client.images.checkSeams()`. Supply exactly one image
+ * source: a public `url` or raw `base64` bytes.
+ */
+export type CheckSeamsParams = {
+  /**
+   * MIME type of the `base64` bytes. Optional: the file type is detected from
+   * the image itself.
+   */
+  contentType?: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  /**
+   * Width divided by height of the tile when the render places the artwork
+   * with `fit: 'crop'`. The image is cut exactly as that render cuts it, then
+   * checked. Leave it out to check the whole image. Must be greater than 0.
+   */
+  cropAspect?: number
+} & (
+  | { url: string; base64?: never }
+  | { url?: never; base64: string }
+)
+
+/**
+ * Parameters for `client.images.fixSeams()`: the same image source and
+ * `cropAspect` as {@link CheckSeamsParams}, so the tile is fixed exactly as
+ * the check sees it.
+ */
+export type FixSeamsParams = CheckSeamsParams & {
+  /**
+   * Optional key for safely retrying the same fix. A retry with the same key
+   * returns the same job and is not charged again. A fresh key is generated
+   * when omitted. Up to 255 characters.
+   */
+  idempotencyKey?: string
+}
+
+/**
+ * How cleanly copies of a tile meet when it repeats:
+ *
+ * - `seamless`: copies meet with no visible line
+ * - `faint_seam`: a faint line may show where copies meet
+ * - `visible_seam`: a line shows where copies meet
+ */
+export type SeamStatus = 'seamless' | 'faint_seam' | 'visible_seam'
+
+/** One side of the tile where copies meet with a seam. */
+export interface SeamSide {
+  /**
+   * `left_right`: where the right edge of one copy meets the left edge of the
+   * next. `top_bottom`: where the bottom edge of one copy meets the top edge
+   * of the next.
+   */
+  side: 'left_right' | 'top_bottom'
+  /** How strongly the seam shows on this side. */
+  status: 'faint_seam' | 'visible_seam'
+  /**
+   * Where along this side the seam shows, as pixel ranges `[start, end)` with
+   * `end` excluded: rows for `left_right`, columns for `top_bottom`.
+   */
+  ranges: Array<[number, number]>
+}
+
+/** A seam fix you already ran on this same tile. */
+export interface SeamPreviousFix {
+  /** The seam fix job. */
+  jobId: string
+  /** URL of the fixed tile. */
+  resultUrl: string
+  /** URL of a second fixed version when one was delivered, otherwise `null`. */
+  alternativeUrl: string | null
+}
+
+/** The result of `client.images.checkSeams()`. */
+export interface SeamCheckResult {
+  /** How cleanly copies of the tile meet. */
+  status: SeamStatus
+  /** The sides where copies meet with a seam; empty when `seamless`. */
+  seams: SeamSide[]
+  /** Width of the checked tile in pixels, after any crop. */
+  width: number
+  /** Height of the checked tile in pixels, after any crop. */
+  height: number
+  /** Whether a seam fix can repair this tile. */
+  fixable: boolean
+  /**
+   * Why a seam fix cannot repair this tile: `transparent_edges` when its edges
+   * are not fully opaque, `too_large` when it is larger than a seam fix
+   * accepts. `null` when fixable.
+   */
+  unfixableReason: 'transparent_edges' | 'too_large' | null
+  /**
+   * Your latest completed seam fix of this same tile, or `null`. Its result
+   * can be used again at no cost.
+   */
+  previousFix: SeamPreviousFix | null
+}
+
+// ---------------------------------------------------------------------------
 // Upload
 // ---------------------------------------------------------------------------
 
@@ -911,6 +1011,7 @@ export type JobKind =
   | '2d_render'
   | 'photo_mockup_create'
   | 'photo_mockup_render'
+  | 'seam_fix'
 
 /**
  * Terminal and in-flight statuses for an async job (the API field is `status`).
@@ -1000,6 +1101,26 @@ export interface Job {
    * `jobs.list()` items; `null` until produced / for non-video kinds.
    */
   posterUrl?: string | null
+  /**
+   * Seam fix jobs only: URL of a second fixed version of the tile, `null`
+   * unless the job succeeded with one.
+   */
+  alternativeUrl?: string | null
+  /**
+   * Seam fix jobs only: how the fixed tile repeats, checked again at no cost.
+   * `null` until the job succeeds.
+   */
+  resultStatus?: SeamStatus | null
+  /**
+   * Seam fix jobs only: what the fix changed. `edges` when only the area along
+   * the edges changed, `whole_tile` when every pixel changed and fine detail
+   * may look a little softer. `null` until the job succeeds.
+   */
+  changes?: 'edges' | 'whole_tile' | null
+  /**
+   * Seam fix jobs only: how far the fix has come. It only moves forward.
+   */
+  stage?: 'queued' | 'fixing' | 'finishing' | null
 }
 
 /** Options for {@link JobsResource.waitForJob}. */
@@ -1120,6 +1241,8 @@ export type WebhookEvent =
   | 'photo_mockup.failed'
   | 'photo_mockup_render.succeeded'
   | 'photo_mockup_render.failed'
+  | 'seam_fix.succeeded'
+  | 'seam_fix.failed'
   | 'webhook.test'
   | (string & {})
 
