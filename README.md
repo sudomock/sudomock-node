@@ -230,7 +230,7 @@ It throws `TimeoutError` only when the job is still running past `timeoutMs`.
 
 List and page your jobs (keyset pagination, newest first). Filter by `kind`
 (`render` | `video` | `upload` | `2d_create` | `2d_render` |
-`photo_mockup_create` | `photo_mockup_render`) and/or `mockupUuid`. A
+`photo_mockup_create` | `photo_mockup_render` | `seam_fix`) and/or `mockupUuid`. A
 photo-mockup job is spelled `photo_mockup_*` when submitted on
 `/api/v1/photo-mockups` (where `client.photoMockups` posts since 2.7.0) and
 `2d_*` when submitted on the earlier `/api/v1/sudoai/2d-mockups` path;
@@ -461,6 +461,54 @@ await client.photoMockups.render({
   }],
 })
 ```
+
+### Seam Check and Fix (`client.images`)
+
+Before you repeat an artwork as a pattern (`tile: true`), check that copies of
+the tile meet without a visible line. Seam check: free. Seam fix: 60 credits,
+refunded if the fix fails.
+
+`checkSeams` takes exactly one of `url` or `base64`. Pass `cropAspect` (width
+divided by height) when the render places the tile with `fit: 'crop'`, so the
+check sees exactly the tile the render shows.
+
+```typescript
+const check = await client.images.checkSeams({
+  url: 'https://example.com/pattern-tile.png',
+})
+
+console.log(check.status)  // 'seamless' | 'faint_seam' | 'visible_seam'
+console.log(check.seams)   // [{ side: 'left_right', status: 'visible_seam', ranges: [[0, 412]] }]
+console.log(check.fixable, check.unfixableReason) // true, null
+console.log(check.previousFix) // your latest fix of this same tile, or null
+```
+
+`fixSeams` takes the same fields and runs as a job of kind `'seam_fix'`. The
+fixed tile keeps its width and height. A tile with transparent edges, or one
+larger than a fix takes, is refused with a `ValidationError` and nothing is
+charged.
+
+```typescript
+const job = await client.images.fixSeams({
+  url: 'https://example.com/pattern-tile.png',
+})
+const done = await client.jobs.waitForJob(job.jobId)
+
+if (done.status === 'succeeded') {
+  console.log(done.resultUrl)      // the fixed tile
+  console.log(done.alternativeUrl) // a second fixed version, or null
+  console.log(done.resultStatus)   // the fixed tile, checked again at no cost
+  console.log(done.changes)        // 'edges' | 'whole_tile'
+}
+```
+
+While the job runs, `client.jobs.retrieve(job.jobId)` reports `stage`:
+`queued`, `fixing` or `finishing`. Each call sends a fresh `Idempotency-Key`;
+pass `idempotencyKey` to retry the same fix without paying twice. A later
+check of the same tile hands the result back in `previousFix` at no cost. To
+be told when a fix ends instead of polling, subscribe a webhook endpoint to
+`seam_fix.succeeded` and `seam_fix.failed`; their payload carries `result_url`
+and `alternative_url`.
 
 ### Uploads
 
@@ -745,6 +793,8 @@ import SudoMock, {
   type AIRenderParams,
   type RemoveBackgroundParams,
   type RemoveBackgroundResult,
+  type CheckSeamsParams,
+  type SeamCheckResult,
   type Job,
   type JobStatus,
   type CreateVideoParams,
