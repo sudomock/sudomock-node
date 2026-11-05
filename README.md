@@ -499,8 +499,15 @@ if (done.status === 'succeeded') {
   console.log(done.alternativeUrl) // a second fixed version, or null
   console.log(done.resultStatus)   // the fixed tile, checked again at no cost
   console.log(done.changes)        // 'edges' | 'whole_tile'
+} else if (done.errorCode === 'TILE_NOT_FIXABLE') {
+  console.log(done.errorDetails?.reason) // 'not_a_pattern_tile' | 'no_clean_result'
 }
 ```
+
+A fix that cannot make the tile repeat cleanly fails with `errorCode`
+`'TILE_NOT_FIXABLE'` and is refunded. `errorDetails.reason` says why:
+`not_a_pattern_tile` when the image is not a repeating pattern tile,
+`no_clean_result` when no fixed version of the tile repeated cleanly.
 
 While the job runs, `client.jobs.retrieve(job.jobId)` reports `stage`:
 `queued`, `fixing` or `finishing`. Each call sends a fresh `Idempotency-Key`;
@@ -509,6 +516,25 @@ check of the same tile hands the result back in `previousFix` at no cost. To
 be told when a fix ends instead of polling, subscribe a webhook endpoint to
 `seam_fix.succeeded` and `seam_fix.failed`; their payload carries `result_url`
 and `alternative_url`.
+
+Once a seam check has found a visible seam in a tile, a PSD or photo mockup
+render that repeats that tile with no gap between copies still completes, and
+its `warnings` carry the code `TILE_SEAM_VISIBLE`.
+
+```typescript
+const render = await client.photoMockups.render({
+  mockupId: 'mockup-uuid',
+  printAreas: [{
+    uuid: 'print-area-uuid',
+    artworkUrl: 'https://example.com/pattern-tile.png',
+    placement: { fit: 'fit', tile: true },
+  }],
+})
+
+for (const warning of render.warnings ?? []) {
+  if (warning.code === 'TILE_SEAM_VISIBLE') console.log(warning.message)
+}
+```
 
 ### Uploads
 
@@ -794,8 +820,10 @@ import SudoMock, {
   type RemoveBackgroundParams,
   type RemoveBackgroundResult,
   type CheckSeamsParams,
+  type FixSeamsParams,
   type SeamCheckResult,
   type Job,
+  type JobErrorDetails,
   type JobStatus,
   type CreateVideoParams,
   type WebhookEndpoint,

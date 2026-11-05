@@ -5,6 +5,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-11-05
+
 ### Added
 - `images.checkSeams` checks whether copies of a pattern tile meet without a
   visible line when it repeats, and where a line appears. It takes exactly one
@@ -18,6 +20,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - `Job` carries `alternativeUrl`, `resultStatus`, `changes` and `stage` for a
   seam fix. `JobKind` gains `seam_fix` and `WebhookEvent` gains
   `seam_fix.succeeded` and `seam_fix.failed`.
+- `Job.errorDetails.reason` says why a seam fix ended with `TILE_NOT_FIXABLE`:
+  `not_a_pattern_tile` when the image is not a repeating pattern tile,
+  `no_clean_result` when no fixed version of the tile repeated cleanly.
+- `photoMockups.render` returns `warnings`, as `renders.create` does. A render
+  that repeats a tile with no gap between copies carries `TILE_SEAM_VISIBLE`
+  once a seam check has found a visible seam in that tile.
+- New exported types: `CheckSeamsParams`, `FixSeamsParams`,
+  `SeamCheckResult`, `SeamSide`, `SeamStatus`, `SeamPreviousFix` and
+  `JobErrorDetails`.
 
 ## [2.13.1] - 2026-11-03
 
