@@ -1,6 +1,7 @@
 import type { HttpClient } from '../client'
 import type {
   Job,
+  JobErrorDetails,
   JobListResult,
   ListJobsParams,
   WaitForJobOptions,
@@ -52,6 +53,16 @@ export function toJob(body: unknown): Job {
       : typeof raw['errorCode'] === 'string'
         ? raw['errorCode']
         : null
+  const rawDetails = failure?.['details']
+  const errorDetails =
+    rawDetails && typeof rawDetails === 'object'
+      ? {
+          reason: ((rawDetails as Record<string, unknown>)['reason'] ??
+            null) as JobErrorDetails['reason'],
+        }
+      : rawDetails === null
+        ? null
+        : undefined
   const payg =
     raw['payg'] && typeof raw['payg'] === 'object'
       ? {
@@ -84,6 +95,7 @@ export function toJob(body: unknown): Job {
         : undefined,
     errorCode:
       rawErrorCode === null ? undefined : publicFailureCode(rawErrorCode),
+    errorDetails,
     creditsCharged: raw['creditsCharged'] as number | null | undefined,
     payg,
     createdAt: raw['createdAt'] as string | undefined,

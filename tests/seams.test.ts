@@ -248,6 +248,7 @@ describe('seam fix jobs', () => {
           error: {
             error_code: 'TILE_NOT_FIXABLE',
             message: 'This image could not be made into a seamless tile.',
+            details: { reason: 'no_clean_result' },
           },
           credits_charged: 0,
           payg: null,
@@ -259,6 +260,7 @@ describe('seam fix jobs', () => {
 
     expect(job.status).toBe('failed')
     expect(job.errorCode).toBe('TILE_NOT_FIXABLE')
+    expect(job.errorDetails).toEqual({ reason: 'no_clean_result' })
     expect(job.error).toBe('This image could not be made into a seamless tile.')
     expect(job.creditsCharged).toBe(0)
     expect(job.stage).toBe('fixing')
@@ -276,5 +278,61 @@ describe('seam fix jobs', () => {
     await createClient().jobs.list({ kind: 'seam_fix' })
 
     expect(kind).toBe('seam_fix')
+  })
+})
+
+describe('photo mockup render warnings', () => {
+  it('keeps the seam advisory a render carries', async () => {
+    const message =
+      'The pattern tile shows a visible line where its copies meet. ' +
+      'Check it with POST /api/v1/check-seams and fix it with POST /api/v1/fix-seams.'
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups/m1/render`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            render_uuid: 'r1',
+            print_files: [
+              {
+                export_path: 'https://cdn.sudomock.com/r1.webp',
+                duration_ms: 900,
+                export_format: 'webp',
+              },
+            ],
+          },
+          warnings: [{ code: 'TILE_SEAM_VISIBLE', message }],
+        }),
+      ),
+    )
+
+    const result = await createClient().photoMockups.render({
+      mockupId: 'm1',
+      printAreas: [{ uuid: 'p1', artworkUrl: TILE, placement: { tile: true } }],
+    })
+
+    expect(result.url).toBe('https://cdn.sudomock.com/r1.webp')
+    expect(result.warnings).toEqual([{ code: 'TILE_SEAM_VISIBLE', message }])
+  })
+
+  it('is empty when the render has none', async () => {
+    server.use(
+      http.post(`${TEST_BASE_URL}/api/v1/photo-mockups/m1/render`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            render_uuid: 'r1',
+            print_files: [{ export_path: 'https://cdn.sudomock.com/r1.webp' }],
+          },
+          warnings: null,
+        }),
+      ),
+    )
+
+    const result = await createClient().photoMockups.render({
+      mockupId: 'm1',
+      printAreas: [{ uuid: 'p1', artworkUrl: TILE }],
+    })
+
+    expect(result.warnings).toEqual([])
   })
 })

@@ -57,7 +57,7 @@ class SudoMock {
   readonly renders: RendersResource
   /** Photo mockups: create reusable mockups from product photos and render onto them */
   readonly photoMockups: AIResource
-  /** Standalone image operations (background removal) */
+  /** Standalone image operations: background removal, seam check and seam fix */
   readonly images: ImagesResource
   /** Upload PSD files */
   readonly uploads: UploadsResource
@@ -65,7 +65,7 @@ class SudoMock {
   readonly account: AccountResource
   /** Studio session management */
   readonly studio: StudioResource
-  /** Poll async render, video, upload, and photo-mockup jobs */
+  /** Poll async render, video, upload, photo-mockup and seam fix jobs */
   readonly jobs: JobsResource
   /** Manage webhook endpoints and their deliveries */
   readonly webhooks: WebhooksResource
@@ -253,6 +253,7 @@ export type {
   JobKind,
   JobStatus,
   JobPayg,
+  JobErrorDetails,
   WaitForJobOptions,
   ListJobsParams,
   JobListResult,
