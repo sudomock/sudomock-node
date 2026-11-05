@@ -70,6 +70,14 @@ const SHIPPED_ON_THE_WIRE = [
   'psdMockups',
   '/api/v1/photo-mockups',
   '/api/v1/psd-mockups',
+  'checkSeams',
+  'fixSeams',
+  'seam_fix',
+  'seam_fix.succeeded',
+  'seam_fix.failed',
+  'SeamCheckResult',
+  'errorDetails',
+  'TILE_SEAM_VISIBLE',
 ] as const
 
 describe('release consistency', () => {
