@@ -37,7 +37,8 @@ function seamsBody(params: CheckSeamsParams): Record<string, unknown> {
 /**
  * Image utilities (`client.images`).
  *
- * Standalone image operations that produce reusable artwork.
+ * Standalone image operations: background removal, which produces reusable
+ * artwork, and the seam check and seam fix of a pattern tile.
  */
 export class ImagesResource {
   constructor(private readonly client: HttpClient) {}

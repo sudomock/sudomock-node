@@ -639,6 +639,12 @@ export interface AIRenderResult {
    * webhook deliveries and transaction records.
    */
   renderUuid?: string
+  /**
+   * Non-fatal advisories for this render, for example `TILE_SEAM_VISIBLE`
+   * when a pattern tile shows a visible line where its copies meet. Empty
+   * when there are none.
+   */
+  warnings?: ApiWarning[]
   /** Convenience accessor: URL of the first rendered file */
   url: string
 }
@@ -1038,6 +1044,19 @@ export interface JobPayg {
 }
 
 /**
+ * More about why a job produced no result. Present only when the job's
+ * `errorCode` is `TILE_NOT_FIXABLE`.
+ */
+export interface JobErrorDetails {
+  /**
+   * Why a seam fix ended with `TILE_NOT_FIXABLE`: `not_a_pattern_tile` when
+   * the image is not a repeating pattern tile, `no_clean_result` when no fixed
+   * version of the tile repeated cleanly.
+   */
+  reason?: 'not_a_pattern_tile' | 'no_clean_result' | null
+}
+
+/**
  * An async job returned by render, upload, 2D creation, and job endpoints.
  */
 export interface Job {
@@ -1060,6 +1079,11 @@ export interface Job {
   error?: string | null
   /** Stable failure code when `status === 'failed'`. */
   errorCode?: string | null
+  /**
+   * More about the failure, present only when `errorCode` is
+   * `TILE_NOT_FIXABLE`. See {@link JobErrorDetails}.
+   */
+  errorDetails?: JobErrorDetails | null
   /**
    * Real charge for the job. For credit/subscription jobs this is the deducted
    * credit count; for PAYG it is the billable credit count.

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { HttpClient } from '../client'
+import { publicWarnings, type HttpClient } from '../client'
 import type {
   AIPrintAreaPlacement,
   AISurfacePlacement,
@@ -384,6 +384,7 @@ export class AIResource {
         exportFormat: file.exportFormat,
       })),
       renderUuid: result.renderUuid,
+      warnings: publicWarnings(result.warnings),
       url: result.printFiles[0]?.exportPath ?? '',
     }
   }
