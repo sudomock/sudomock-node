@@ -109,6 +109,7 @@ export function toJob(body: unknown): Job {
     alternativeUrl: raw['alternativeUrl'] as Job['alternativeUrl'],
     resultStatus: raw['resultStatus'] as Job['resultStatus'],
     changes: raw['changes'] as Job['changes'],
+    fineDetail: raw['fineDetail'] as Job['fineDetail'],
     stage: raw['stage'] as Job['stage'],
   }
   return Object.fromEntries(
