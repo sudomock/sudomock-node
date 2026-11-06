@@ -110,6 +110,7 @@ export function toJob(body: unknown): Job {
     resultStatus: raw['resultStatus'] as Job['resultStatus'],
     changes: raw['changes'] as Job['changes'],
     fineDetail: raw['fineDetail'] as Job['fineDetail'],
+    changedArea: raw['changedArea'] as Job['changedArea'],
     stage: raw['stage'] as Job['stage'],
   }
   return Object.fromEntries(

@@ -1148,6 +1148,11 @@ export interface Job {
    */
   fineDetail?: 'unchanged' | 'softer' | null
   /**
+   * Seam fix jobs only: how much of the tile changed, `part` or `whole`. `null`
+   * until the job succeeds and on older fixes.
+   */
+  changedArea?: 'part' | 'whole' | null
+  /**
    * Seam fix jobs only: how far the fix has come. It only moves forward.
    */
   stage?: 'queued' | 'fixing' | 'finishing' | null
