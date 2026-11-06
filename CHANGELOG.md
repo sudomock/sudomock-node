@@ -5,7 +5,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [2.14.0] - 2026-11-05
+## [2.14.0] - 2026-11-06
 
 ### Added
 - `images.checkSeams` checks whether copies of a pattern tile meet without a
