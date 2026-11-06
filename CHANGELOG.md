@@ -5,6 +5,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.15.0] - 2026-11-06
+
+### Added
+- A seam fix job's `changes` can read `rearranged`: motifs were moved so none is
+  cut.
+- `Job.fineDetail` says how fine detail came out of a seam fix: `unchanged` or
+  `softer`.
+
 ## [2.14.0] - 2026-11-06
 
 ### Added

@@ -1137,10 +1137,16 @@ export interface Job {
   resultStatus?: SeamStatus | null
   /**
    * Seam fix jobs only: what the fix changed. `edges` when only the area along
-   * the edges changed, `whole_tile` when every pixel changed and fine detail
-   * may look a little softer. `null` until the job succeeds.
+   * the edges changed, `whole_tile` when the change reaches across the tile,
+   * `rearranged` when motifs were moved so none is cut. `null` until the job
+   * succeeds.
    */
-  changes?: 'edges' | 'whole_tile' | null
+  changes?: 'edges' | 'whole_tile' | 'rearranged' | null
+  /**
+   * Seam fix jobs only: how fine detail came out, `unchanged`, or `softer` when
+   * the tile was rebuilt. `null` until the job succeeds and on older fixes.
+   */
+  fineDetail?: 'unchanged' | 'softer' | null
   /**
    * Seam fix jobs only: how far the fix has come. It only moves forward.
    */
