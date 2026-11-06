@@ -500,6 +500,7 @@ if (done.status === 'succeeded') {
   console.log(done.resultStatus)   // the fixed tile, checked again at no cost
   console.log(done.changes)        // 'edges' | 'whole_tile' | 'rearranged'
   console.log(done.fineDetail)     // 'unchanged' | 'softer'
+  console.log(done.changedArea)    // 'part' | 'whole'
 } else if (done.errorCode === 'TILE_NOT_FIXABLE') {
   console.log(done.errorDetails?.reason) // 'not_a_pattern_tile' | 'no_clean_result'
 }
