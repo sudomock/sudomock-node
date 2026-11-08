@@ -152,6 +152,67 @@ describe('folders.delete()', () => {
   })
 })
 
+describe('folders: what reaches the wire', () => {
+  it('keeps a uuid in the path, so it cannot turn on a recursive delete', async () => {
+    let capturedUrl = ''
+    server.use(
+      http.delete(`${TEST_BASE_URL}/api/v1/folders/:uuid`, ({ request }) => {
+        capturedUrl = request.url
+        return HttpResponse.json({
+          success: true,
+          data: {
+            deleted: MOCK_FOLDER.uuid,
+            deleted_folders: 1,
+            deleted_psd_mockups: 0,
+            deleted_photo_mockups: 0,
+          },
+        })
+      }),
+    )
+    const client = createClient()
+
+    // An id an application took from its own end user must stay one segment.
+    await client.folders.delete(`${MOCK_FOLDER.uuid}?recursive=true`)
+    expect(new URL(capturedUrl).searchParams.has('recursive')).toBe(false)
+  })
+
+  it('drops fields the API never published from a delete and a move', async () => {
+    server.use(
+      http.delete(`${TEST_BASE_URL}/api/v1/folders/:uuid`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            deleted: MOCK_FOLDER.uuid,
+            deleted_folders: 1,
+            deleted_psd_mockups: 0,
+            deleted_photo_mockups: 0,
+            private_storage_prefix: 'private/folders',
+          },
+        }),
+      ),
+      http.post(`${TEST_BASE_URL}/api/v1/folders/move`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            target_folder_uuid: MOCK_FOLDER.uuid,
+            moved_psd_mockups: 1,
+            moved_photo_mockups: 0,
+            moved_folders: 0,
+            private_storage_prefix: 'private/folders',
+          },
+        }),
+      ),
+    )
+    const client = createClient()
+
+    const gone = await client.folders.delete(MOCK_FOLDER.uuid)
+    expect(gone).not.toHaveProperty('privateStoragePrefix')
+
+    const moved = await client.folders.move({ psdMockupUuids: ['mockup-uuid'] })
+    expect(moved).not.toHaveProperty('privateStoragePrefix')
+  })
+})
+
 describe('folders.move()', () => {
   it('sends every list and reads a missing target as the top of the library', async () => {
     const bodies: Record<string, unknown>[] = []

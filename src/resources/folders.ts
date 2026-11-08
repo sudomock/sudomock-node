@@ -16,6 +16,14 @@ import type {
 /** Path the folder family is served on. */
 export const FOLDERS_PATH = '/api/v1/folders'
 
+// A uuid that arrives from an application's own end user must stay one path
+// segment. Unencoded, a `?` in it reaches the query string, and a caller that
+// never asks for `recursive` could still be made to delete a folder's whole
+// contents.
+function folderPath(uuid: string): string {
+  return `${FOLDERS_PATH}/${encodeURIComponent(uuid)}`
+}
+
 function toPublicFolder(folder: Folder): Folder {
   return {
     uuid: folder.uuid,
@@ -39,6 +47,24 @@ function toPublicFolderDetail(folder: FolderDetail): FolderDetail {
     totalFolderCount: folder.totalFolderCount,
     totalPsdMockupCount: folder.totalPsdMockupCount,
     totalPhotoMockupCount: folder.totalPhotoMockupCount,
+  }
+}
+
+function toPublicDeleteResult(result: DeleteFolderResult): DeleteFolderResult {
+  return {
+    deleted: result.deleted,
+    deletedFolders: result.deletedFolders,
+    deletedPsdMockups: result.deletedPsdMockups,
+    deletedPhotoMockups: result.deletedPhotoMockups,
+  }
+}
+
+function toPublicMoveResult(result: MoveToFolderResult): MoveToFolderResult {
+  return {
+    targetFolderUuid: result.targetFolderUuid ?? null,
+    movedPsdMockups: result.movedPsdMockups,
+    movedPhotoMockups: result.movedPhotoMockups,
+    movedFolders: result.movedFolders,
   }
 }
 
@@ -85,10 +111,12 @@ export class FoldersResource {
    * ```
    */
   async create(params: CreateFolderParams): Promise<Folder> {
+    const body: Record<string, unknown> = { name: params.name }
+    if (params.parentUuid !== undefined) body['parentUuid'] = params.parentUuid
     const folder = await this.client.request<Folder>({
       method: 'POST',
       path: FOLDERS_PATH,
-      body: params,
+      body,
     })
     return toPublicFolder(folder)
   }
@@ -106,7 +134,7 @@ export class FoldersResource {
   async get(uuid: string): Promise<FolderDetail> {
     const folder = await this.client.request<FolderDetail>({
       method: 'GET',
-      path: `${FOLDERS_PATH}/${uuid}`,
+      path: folderPath(uuid),
     })
     return toPublicFolderDetail(folder)
   }
@@ -131,7 +159,7 @@ export class FoldersResource {
     }
     const folder = await this.client.request<FolderDetail>({
       method: 'PATCH',
-      path: `${FOLDERS_PATH}/${uuid}`,
+      path: folderPath(uuid),
       body,
     })
     return toPublicFolderDetail(folder)
@@ -155,11 +183,12 @@ export class FoldersResource {
     uuid: string,
     params: DeleteFolderParams = {},
   ): Promise<DeleteFolderResult> {
-    return await this.client.request<DeleteFolderResult>({
+    const result = await this.client.request<DeleteFolderResult>({
       method: 'DELETE',
-      path: `${FOLDERS_PATH}/${uuid}`,
+      path: folderPath(uuid),
       query: { recursive: params.recursive ? 'true' : undefined },
     })
+    return toPublicDeleteResult(result)
   }
 
   /**
@@ -188,7 +217,7 @@ export class FoldersResource {
         'Name at least one mockup or folder to move in psdMockupUuids, photoMockupUuids or folderUuids',
       )
     }
-    return await this.client.request<MoveToFolderResult>({
+    const result = await this.client.request<MoveToFolderResult>({
       method: 'POST',
       path: `${FOLDERS_PATH}/move`,
       body: {
@@ -198,5 +227,6 @@ export class FoldersResource {
         folderUuids,
       },
     })
+    return toPublicMoveResult(result)
   }
 }
