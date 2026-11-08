@@ -50,6 +50,7 @@ export class UploadsResource {
       body: {
         psdFileUrl: params.psdFileUrl,
         psdName: params.psdName,
+        folderUuid: params.folderUuid,
         isAsync: params.isAsync,
       },
       timeout: UPLOAD_TIMEOUT,

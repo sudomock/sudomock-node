@@ -78,6 +78,11 @@ const SHIPPED_ON_THE_WIRE = [
   'SeamCheckResult',
   'errorDetails',
   'TILE_SEAM_VISIBLE',
+  'folders',
+  '/api/v1/folders',
+  'folderUuid',
+  'parentUuid',
+  'FolderDetail',
 ] as const
 
 describe('release consistency', () => {

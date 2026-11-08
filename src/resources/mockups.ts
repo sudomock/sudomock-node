@@ -7,6 +7,7 @@ import type {
   MockupListResult,
   SmartObject,
   TextLayer,
+  UpdateMockupParams,
 } from '../types'
 
 function toPublicLayer(layer: MockupLayer): MockupLayer {
@@ -93,6 +94,7 @@ export function toPublicMockup(mockup: Mockup): Mockup {
   return {
     uuid: mockup.uuid,
     name: mockup.name,
+    folderUuid: mockup.folderUuid ?? null,
     thumbnail: mockup.thumbnail,
     width: mockup.width,
     height: mockup.height,
@@ -138,6 +140,7 @@ export class MockupsResource {
         created_before: params.createdBefore,
         sort: params.sort,
         order: params.order,
+        folder_uuid: params.folderUuid,
       },
     })
     return {
@@ -192,18 +195,30 @@ export class MockupsResource {
   }
 
   /**
-   * Update a mockup's name.
+   * Update a mockup's name, or move it to another folder.
+   *
+   * A field left out is left alone. `folderUuid: null` moves the mockup to
+   * the top of the library. Moving never changes the mockup's uuid.
    *
    * @example
    * ```ts
    * const updated = await client.psdMockups.update('uuid', { name: 'New Name' })
+   * await client.psdMockups.update('uuid', { folderUuid: 'folder-uuid' })
    * ```
    */
-  async update(uuid: string, params: { name: string }): Promise<Mockup> {
+  async update(uuid: string, params: UpdateMockupParams): Promise<Mockup> {
+    const body: Record<string, unknown> = {}
+    if (params.name !== undefined) body['name'] = params.name
+    // Presence, not truthiness: writing the field out with a `null` is the
+    // caller asking for the top of the library, which is not the same as
+    // leaving the mockup where it is.
+    if (Object.prototype.hasOwnProperty.call(params, 'folderUuid')) {
+      body['folderUuid'] = params.folderUuid
+    }
     const mockup = await this.client.request<Mockup>({
       method: 'PATCH',
       path: `${this.basePath}/${uuid}`,
-      body: params,
+      body,
     })
     return toPublicMockup(mockup)
   }

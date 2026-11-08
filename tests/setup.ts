@@ -269,7 +269,32 @@ export const MOCK_WEBHOOK_DELIVERY = {
 // Default handlers -- happy path
 // ---------------------------------------------------------------------------
 
+export const MOCK_FOLDER = {
+  uuid: 'c4f1a7d2-3b85-4e60-9a1f-7d2c5e8b4061',
+  name: 'Frames',
+  parent_uuid: null,
+  folder_count: 1,
+  psd_mockup_count: 12,
+  photo_mockup_count: 4,
+  created_at: '2026-11-08T10:00:00Z',
+  updated_at: '2026-11-08T10:00:00Z',
+  // Never published, so the resource must not pass it through.
+  private_storage_key: 'private/folders/frames',
+}
+
 export const handlers = [
+  // List folders
+  http.get(`${TEST_BASE_URL}/api/v1/folders`, ({ request }) => {
+    const apiKey = request.headers.get('x-api-key')
+    if (apiKey !== TEST_API_KEY) {
+      return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
+    }
+    return HttpResponse.json({
+      success: true,
+      data: { folders: [MOCK_FOLDER], total: 1, limit: 20, offset: 0 },
+    })
+  }),
+
   // List mockups
   http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, ({ request }) => {
     const apiKey = request.headers.get('x-api-key')

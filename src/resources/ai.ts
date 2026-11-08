@@ -35,6 +35,7 @@ function publicMockup(mockup: TwoDMockup): TwoDMockup {
   return {
     mockupId: mockup.mockupId,
     name: mockup.name,
+    folderUuid: mockup.folderUuid ?? null,
     status: mockup.status,
     customizable: mockup.customizable,
     thumbnailUrl: mockup.thumbnailUrl,
@@ -212,6 +213,7 @@ export class AIResource {
       sourceBase64: params.sourceBase64,
       name: params.name,
       printAreas: params.printAreas,
+      folderUuid: params.folderUuid,
     }
     // Only send is_async when explicitly opting into the async job flow; the
     // default (sync) create must not carry the flag.
@@ -418,6 +420,7 @@ export class AIResource {
         limit: params.limit,
         offset: params.offset,
         customizable_only: params.customizableOnly ? 'true' : undefined,
+        folder_uuid: params.folderUuid,
       },
       rawEnvelope: true,
     })

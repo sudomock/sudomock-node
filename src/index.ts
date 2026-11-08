@@ -4,6 +4,7 @@ import { SudoMockError } from './errors'
 import { EARLIER_PSD_MOCKUPS_PATH, MockupsResource } from './resources/mockups'
 import { RendersResource } from './resources/renders'
 import { AIResource, EARLIER_PHOTO_MOCKUPS_PATH } from './resources/ai'
+import { FoldersResource } from './resources/folders'
 import { ImagesResource } from './resources/images'
 import { UploadsResource } from './resources/uploads'
 import { AccountResource } from './resources/account'
@@ -61,6 +62,8 @@ class SudoMock {
   readonly images: ImagesResource
   /** Upload PSD files */
   readonly uploads: UploadsResource
+  /** Folders: keep the mockup library in a tree and move things around in it */
+  readonly folders: FoldersResource
   /** Account info and usage */
   readonly account: AccountResource
   /** Studio session management */
@@ -97,6 +100,7 @@ class SudoMock {
     this.photoMockups = new AIResource(client)
     this.images = new ImagesResource(client)
     this.uploads = new UploadsResource(client)
+    this.folders = new FoldersResource(client)
     this.account = new AccountResource(client)
     this.studio = new StudioResource(client)
     this.jobs = new JobsResource(client)
@@ -160,6 +164,18 @@ export type {
   SudoMockOptions,
   ListMockupsParams,
   Mockup,
+  UpdateMockupParams,
+  Folder,
+  FolderPathEntry,
+  FolderDetail,
+  ListFoldersParams,
+  FolderListResult,
+  CreateFolderParams,
+  UpdateFolderParams,
+  DeleteFolderParams,
+  DeleteFolderResult,
+  MoveToFolderParams,
+  MoveToFolderResult,
   MockupLayer,
   MockupLayerKind,
   MockupLayersResult,

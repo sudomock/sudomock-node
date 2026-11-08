@@ -32,6 +32,12 @@ export interface ListMockupsParams {
   sort?: 'name' | 'created_at' | 'updated_at'
   /** Sort order */
   order?: 'asc' | 'desc'
+  /**
+   * Only mockups in this folder. Pass a folder's uuid, or `'root'` for the
+   * ones at the top of the library. Leave it out for every mockup, wherever
+   * it sits.
+   */
+  folderUuid?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +147,8 @@ export interface ApiWarning {
 export interface Mockup {
   uuid: string
   name: string
+  /** The folder this mockup is in. `null` means the top of the library. */
+  folderUuid: string | null
   thumbnail: string
   width: number | null
   height: number | null
@@ -149,6 +157,20 @@ export interface Mockup {
   collections: unknown[]
   thumbnails: ThumbnailSize[]
   warnings?: ApiWarning[]
+}
+
+/**
+ * Params for `client.psdMockups.update()`.
+ *
+ * A field left out is left alone. `folderUuid: null` moves the mockup to the
+ * top of the library, which is why "left out" and "sent as null" are not the
+ * same thing here.
+ */
+export interface UpdateMockupParams {
+  /** A new name for the mockup. */
+  name?: string
+  /** The folder to move the mockup into, or `null` for the top of the library. */
+  folderUuid?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -656,6 +678,11 @@ export type Create2DMockupParams = {
   /** Optional key for safely retrying the same create request. */
   idempotencyKey?: string
   /**
+   * The folder the new mockup goes into. Leave it out to put it at the top of
+   * the library.
+   */
+  folderUuid?: string
+  /**
    * Optional seed print areas (4-point quads, each with an optional `name`).
    * When omitted SudoMock detects the print area(s) automatically.
    */
@@ -755,6 +782,8 @@ export interface Update2DPrintAreasResult {
 export interface TwoDMockup {
   mockupId: string
   name: string
+  /** The folder this mockup is in. `null` means the top of the library. */
+  folderUuid: string | null
   status: string
   /** Whether this mockup is ready for a shopper customization session. */
   customizable: boolean
@@ -786,6 +815,12 @@ export interface List2dMockupsParams {
   offset?: number
   /** Return only mockups ready for shopper customization. */
   customizableOnly?: boolean
+  /**
+   * Only mockups in this folder. Pass a folder's uuid, or `'root'` for the
+   * ones at the top of the library. Leave it out for every mockup, wherever
+   * it sits.
+   */
+  folderUuid?: string
 }
 
 /**
@@ -804,6 +839,140 @@ export interface TwoDMockupListResult {
   limit: number
   /** Offset that was applied. */
   offset: number
+}
+
+// ---------------------------------------------------------------------------
+// Folders (client.folders)
+// ---------------------------------------------------------------------------
+
+/** One folder, and how much it holds directly. */
+export interface Folder {
+  uuid: string
+  name: string
+  /** The folder this one sits in. `null` means the top of the library. */
+  parentUuid: string | null
+  /** Folders directly inside this one. */
+  folderCount: number
+  /** PSD mockups directly inside this one. */
+  psdMockupCount: number
+  /** Photo mockups directly inside this one. */
+  photoMockupCount: number
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+/** One step on the trail from the top of the library down to a folder. */
+export interface FolderPathEntry {
+  uuid: string
+  name: string
+}
+
+/**
+ * One folder with the trail above it and what it holds at any depth
+ * (`client.folders.get()`). The `total` counts are what a recursive delete
+ * would remove.
+ */
+export interface FolderDetail extends Folder {
+  /** The folders above this one, topmost first. Empty at the top of the library. */
+  path: FolderPathEntry[]
+  totalFolderCount: number
+  totalPsdMockupCount: number
+  totalPhotoMockupCount: number
+}
+
+/** Params for `client.folders.list()`. */
+export interface ListFoldersParams {
+  /**
+   * Folder whose subfolders to list. Pass `'root'` for the folders at the top
+   * of the library. Leave it out to list every folder.
+   */
+  parentUuid?: string
+  /** Number of folders to return (1-100, default: 20). */
+  limit?: number
+  /** Number of folders to skip (default: 0). */
+  offset?: number
+}
+
+/** An offset-paginated page of folders, by name. */
+export interface FolderListResult {
+  folders: Folder[]
+  total: number
+  limit: number
+  offset: number
+}
+
+/** Params for `client.folders.create()`. */
+export interface CreateFolderParams {
+  /**
+   * The folder's name. It has to be unique among the folders beside it,
+   * whatever the capitalisation, so the same call can safely be made twice.
+   */
+  name: string
+  /**
+   * The folder to create this one in. Leave it out to create it at the top of
+   * the library.
+   */
+  parentUuid?: string
+}
+
+/**
+ * Params for `client.folders.update()`.
+ *
+ * A field left out is left alone. `parentUuid: null` moves the folder to the
+ * top of the library, which is why "left out" and "sent as null" are not the
+ * same thing here.
+ */
+export interface UpdateFolderParams {
+  /** A new name for the folder. */
+  name?: string
+  /** The folder to move this one into, or `null` for the top of the library. */
+  parentUuid?: string | null
+}
+
+/** Params for `client.folders.delete()`. */
+export interface DeleteFolderParams {
+  /**
+   * Delete everything inside the folder as well. Required for a folder that
+   * is not empty, and permanent: the mockups inside go too.
+   */
+  recursive?: boolean
+}
+
+/** What one delete removed. */
+export interface DeleteFolderResult {
+  /** The folder that was deleted. */
+  deleted: string
+  /** Folders deleted, this one included. */
+  deletedFolders: number
+  deletedPsdMockups: number
+  deletedPhotoMockups: number
+}
+
+/**
+ * Params for `client.folders.move()`.
+ *
+ * Everything listed moves together or nothing does. Leave
+ * `targetFolderUuid` out, or send `null`, to move the selection to the top of
+ * the library. Name at least one mockup or folder.
+ */
+export interface MoveToFolderParams {
+  /** The folder everything listed moves into, or `null` for the top of the library. */
+  targetFolderUuid?: string | null
+  /** PSD mockups to move, up to 500. */
+  psdMockupUuids?: readonly string[]
+  /** Photo mockups to move, up to 500. */
+  photoMockupUuids?: readonly string[]
+  /** Folders to move, with everything inside them, up to 500. */
+  folderUuids?: readonly string[]
+}
+
+/** What one move moved. */
+export interface MoveToFolderResult {
+  /** The folder everything moved into. `null` means the top of the library. */
+  targetFolderUuid: string | null
+  movedPsdMockups: number
+  movedPhotoMockups: number
+  movedFolders: number
 }
 
 // ---------------------------------------------------------------------------
@@ -947,6 +1116,11 @@ export interface UploadParams {
   /** Optional name for the mockup */
   psdName?: string
   /**
+   * The folder the new mockup goes into. Leave it out to put it at the top of
+   * the library.
+   */
+  folderUuid?: string
+  /**
    * Process the PSD asynchronously.
    *
    * When `true`, the API enqueues processing and immediately returns a
@@ -961,6 +1135,8 @@ export interface UploadParams {
 export interface UploadResult {
   uuid: string
   name: string
+  /** The folder this mockup is in. `null` means the top of the library. */
+  folderUuid: string | null
   thumbnail: string
   width: number | null
   height: number | null
