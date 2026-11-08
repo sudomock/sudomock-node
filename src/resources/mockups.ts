@@ -1,4 +1,4 @@
-import { publicWarnings, type HttpClient } from '../client'
+import { encodeId, publicWarnings, type HttpClient } from '../client'
 import type {
   ListMockupsParams,
   Mockup,
@@ -163,7 +163,7 @@ export class MockupsResource {
   async get(uuid: string): Promise<Mockup> {
     const mockup = await this.client.request<Mockup>({
       method: 'GET',
-      path: `${this.basePath}/${uuid}`,
+      path: `${this.basePath}/${encodeId(uuid)}`,
     })
     return toPublicMockup(mockup)
   }
@@ -186,7 +186,7 @@ export class MockupsResource {
   async layers(uuid: string): Promise<MockupLayersResult> {
     const result = await this.client.request<MockupLayersResult>({
       method: 'GET',
-      path: `${this.basePath}/${uuid}/layers`,
+      path: `${this.basePath}/${encodeId(uuid)}/layers`,
     })
     return {
       mockupUuid: result.mockupUuid,
@@ -217,7 +217,7 @@ export class MockupsResource {
     }
     const mockup = await this.client.request<Mockup>({
       method: 'PATCH',
-      path: `${this.basePath}/${uuid}`,
+      path: `${this.basePath}/${encodeId(uuid)}`,
       body,
     })
     return toPublicMockup(mockup)
@@ -234,7 +234,7 @@ export class MockupsResource {
   async delete(uuid: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `${this.basePath}/${uuid}`,
+      path: `${this.basePath}/${encodeId(uuid)}`,
     })
   }
 }

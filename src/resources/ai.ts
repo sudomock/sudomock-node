@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { publicWarnings, type HttpClient } from '../client'
+import { encodeId, publicWarnings, type HttpClient } from '../client'
 import type {
   AIPrintAreaPlacement,
   AISurfacePlacement,
@@ -366,7 +366,7 @@ export class AIResource {
       AIRenderResult | Job
     >({
       method: 'POST',
-      path: `${this.basePath}/${params.mockupId}/render`,
+      path: `${this.basePath}/${encodeId(params.mockupId)}/render`,
       body,
       timeout: AI_RENDER_TIMEOUT,
     })
@@ -439,7 +439,7 @@ export class AIResource {
   async get(mockupId: string): Promise<TwoDMockupDetails> {
     const mockup = await this.client.request<TwoDMockupDetails>({
       method: 'GET',
-      path: `${this.basePath}/${mockupId}`,
+      path: `${this.basePath}/${encodeId(mockupId)}`,
     })
     return publicMockupDetails(mockup)
   }
@@ -462,7 +462,7 @@ export class AIResource {
 
     const result = await this.client.request<Update2DPrintAreasResult>({
       method: 'PUT',
-      path: `${this.basePath}/${mockupId}/print-areas`,
+      path: `${this.basePath}/${encodeId(mockupId)}/print-areas`,
       body: { printAreas },
     })
     return {
@@ -477,7 +477,7 @@ export class AIResource {
   async delete(mockupId: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `${this.basePath}/${mockupId}`,
+      path: `${this.basePath}/${encodeId(mockupId)}`,
     })
   }
 }

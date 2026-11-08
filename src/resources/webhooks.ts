@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import type { HttpClient } from '../client'
+import { encodeId, type HttpClient } from '../client'
 import type {
   WebhookEndpoint,
   CreateWebhookEndpointParams,
@@ -82,7 +82,7 @@ export class WebhooksResource {
   async retrieve(id: string): Promise<WebhookEndpoint> {
     const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'GET',
-      path: `/api/v1/webhook-endpoints/${id}`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}`,
     })
     return toWebhookEndpoint(endpoint)
   }
@@ -125,7 +125,7 @@ export class WebhooksResource {
   ): Promise<WebhookEndpoint> {
     const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'PATCH',
-      path: `/api/v1/webhook-endpoints/${id}`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}`,
       body: {
         url: params.url,
         eventTypes: params.eventTypes,
@@ -143,7 +143,7 @@ export class WebhooksResource {
   async delete(id: string): Promise<void> {
     await this.client.request<void>({
       method: 'DELETE',
-      path: `/api/v1/webhook-endpoints/${id}`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}`,
     })
   }
 
@@ -154,7 +154,7 @@ export class WebhooksResource {
   async rotateSecret(id: string): Promise<WebhookEndpoint> {
     const endpoint = await this.client.request<WebhookEndpoint>({
       method: 'POST',
-      path: `/api/v1/webhook-endpoints/${id}/rotate-secret`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}/rotate-secret`,
     })
     return toWebhookEndpoint(endpoint)
   }
@@ -166,7 +166,7 @@ export class WebhooksResource {
   async test(id: string): Promise<void> {
     await this.client.request<void>({
       method: 'POST',
-      path: `/api/v1/webhook-endpoints/${id}/test`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}/test`,
     })
   }
 
@@ -204,7 +204,7 @@ export class WebhooksResource {
   ): Promise<WebhookDelivery[]> {
     const deliveries = await this.client.request<WebhookDelivery[]>({
       method: 'GET',
-      path: `/api/v1/webhook-endpoints/${id}/deliveries`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}/deliveries`,
       query: {
         status: params.status,
         event_type: params.eventType,
@@ -220,7 +220,7 @@ export class WebhooksResource {
   async replayDelivery(id: string, deliveryId: string): Promise<void> {
     await this.client.request<void>({
       method: 'POST',
-      path: `/api/v1/webhook-endpoints/${id}/deliveries/${deliveryId}/replay`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}/deliveries/${encodeId(deliveryId)}/replay`,
     })
   }
 
@@ -236,7 +236,7 @@ export class WebhooksResource {
   async replayFailed(id: string): Promise<ReplayFailedResult> {
     const result = await this.client.request<ReplayFailedResult>({
       method: 'POST',
-      path: `/api/v1/webhook-endpoints/${id}/deliveries/replay-failed`,
+      path: `/api/v1/webhook-endpoints/${encodeId(id)}/deliveries/replay-failed`,
     })
     return { status: result.status, count: result.count }
   }

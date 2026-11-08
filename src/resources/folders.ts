@@ -1,4 +1,4 @@
-import { type HttpClient } from '../client'
+import { encodeId, type HttpClient } from '../client'
 import { ValidationError } from '../errors'
 import type {
   CreateFolderParams,
@@ -16,12 +16,10 @@ import type {
 /** Path the folder family is served on. */
 export const FOLDERS_PATH = '/api/v1/folders'
 
-// A uuid that arrives from an application's own end user must stay one path
-// segment. Unencoded, a `?` in it reaches the query string, and a caller that
-// never asks for `recursive` could still be made to delete a folder's whole
-// contents.
+// A uuid that reaches the query string could turn on `recursive`, which
+// deletes a folder's whole contents, so it stays one path segment.
 function folderPath(uuid: string): string {
-  return `${FOLDERS_PATH}/${encodeURIComponent(uuid)}`
+  return `${FOLDERS_PATH}/${encodeId(uuid)}`
 }
 
 function toPublicFolder(folder: Folder): Folder {

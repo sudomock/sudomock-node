@@ -135,6 +135,18 @@ export function publicWarnings(
   }))
 }
 
+/**
+ * One id, safe to drop into a request path.
+ *
+ * An id often arrives from an application's own end user. Unencoded, a `?` or
+ * a `#` in it escapes its path segment and reaches the query string, where it
+ * can add a parameter the caller never asked for. Encoding keeps it one
+ * segment, so a bad id answers 404 instead of changing what the request does.
+ */
+export function encodeId(id: string): string {
+  return encodeURIComponent(id)
+}
+
 /** Response wrapper that preserves the HTTP status alongside the parsed body. */
 export interface ResponseWithStatus<T> {
   /** HTTP status code (e.g. 200 or 202). */

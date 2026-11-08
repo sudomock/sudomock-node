@@ -1,4 +1,4 @@
-import type { HttpClient } from '../client'
+import { encodeId, type HttpClient } from '../client'
 import type {
   Job,
   JobErrorDetails,
@@ -187,7 +187,7 @@ export class JobsResource {
   async retrieve(jobId: string): Promise<Job> {
     const data = await this.client.request<Job>({
       method: 'GET',
-      path: `/api/v1/jobs/${jobId}`,
+      path: `/api/v1/jobs/${encodeId(jobId)}`,
     })
     return toJob(data)
   }
