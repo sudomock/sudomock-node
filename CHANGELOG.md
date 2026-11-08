@@ -5,6 +5,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.16.0] - 2026-11-08
+
+### Added
+- `client.folders` keeps a large mockup library in a tree. PSD mockups and
+  photo mockups share that tree, and every mockup sits in exactly one folder
+  or at the top of the library. `list` pages the folders by name and takes
+  `parentUuid`, either a folder's uuid or `'root'` for the ones at the top of
+  the library; `create` adds one; `get` returns the trail of folders above it
+  (`path`) and the `total` counts a recursive delete would remove; `update`
+  renames or moves it; `delete` reports what went; `move` moves any mix of
+  mockups and folders in one call. The family is served on
+  `/api/v1/folders`, and every folder call is free.
+- `FolderDetail`, `Folder`, `FolderPathEntry`, `FolderListResult`,
+  `ListFoldersParams`, `CreateFolderParams`, `UpdateFolderParams`,
+  `DeleteFolderParams`, `DeleteFolderResult`, `MoveToFolderParams` and
+  `MoveToFolderResult` are exported.
+- `client.psdMockups.list()` and `client.photoMockups.list()` take
+  `folderUuid`: a folder's uuid for the mockups directly in it, or `'root'`
+  for the ones at the top of the library. A call without it returns every
+  mockup, as it did before.
+- `Mockup`, `UploadResult` and `PhotoMockup` carry `folderUuid`, which is
+  `null` at the top of the library.
+- `client.uploads.create()` and `client.photoMockups.create()` take
+  `folderUuid`, so a new template lands where it belongs without a second
+  call.
+
+### Changed
+- `client.psdMockups.update()` takes `UpdateMockupParams` instead of
+  `{ name: string }`: `name` is now optional and `folderUuid` moves the
+  mockup. A field left out is left alone, and `folderUuid: null` moves the
+  mockup to the top of the library. Moving never changes a mockup's uuid, so
+  renders, webhooks and integrations keep working against the uuid they
+  already hold. Code that passed `{ name }` is unaffected.
+
 ## [2.15.1] - 2026-11-06
 
 ### Added

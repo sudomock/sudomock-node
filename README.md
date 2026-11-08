@@ -69,6 +69,7 @@ const result = await client.psdMockups.list({
   name: 'shirt',        // case-insensitive contains
   sort: 'created_at',   // 'name' | 'created_at' | 'updated_at'
   order: 'desc',        // 'asc' | 'desc'
+  folderUuid: 'uuid',   // one folder, or 'root' for the top of the library
 })
 
 // Get a single mockup
@@ -78,8 +79,10 @@ console.log(mockup.smartObjects)
 // List every layer, nested as in Photoshop's Layers panel
 const { layers } = await client.psdMockups.layers('uuid')
 
-// Update mockup name
+// Rename a mockup, or move it to another folder
 const updated = await client.psdMockups.update('uuid', { name: 'New Name' })
+await client.psdMockups.update('uuid', { folderUuid: 'folder-uuid' })
+await client.psdMockups.update('uuid', { folderUuid: null })  // top of library
 
 // Delete a mockup
 await client.psdMockups.delete('uuid')
@@ -348,6 +351,7 @@ const mockup = await client.photoMockups.create({
   sourceUrl: 'https://example.com/product.jpg',
   name: 'Front view',
   idempotencyKey: 'front-view-v1',
+  folderUuid: 'folder-uuid',      // optional, where it lands
 })
 
 const printArea = mockup.quads[0]
@@ -406,6 +410,7 @@ Manage the 2D-mockup catalog:
 const { mockups, total } = await client.photoMockups.list({
   limit: 50,
   customizableOnly: true,
+  folderUuid: 'root',             // one folder, or the top of the library
 })
 console.log(mockups[0]?.customizable)
 const mockup = await client.photoMockups.get('mockup-uuid')
@@ -544,6 +549,7 @@ for (const warning of render.warnings ?? []) {
 const mockup = await client.uploads.create({
   psdFileUrl: 'https://example.com/mockup.psd',
   psdName: 'My T-Shirt Mockup',  // optional
+  folderUuid: 'folder-uuid',     // optional, where it lands
 })
 
 console.log(mockup.uuid)
@@ -562,6 +568,54 @@ const job = await client.uploads.create({
 const done = await client.jobs.waitForJob(job.jobId)
 console.log(done.mockupUuid)
 ```
+
+### Folders (`client.folders`)
+
+Folders keep a large library in a tree. PSD mockups and photo mockups share
+that tree, every mockup sits in exactly one folder or at the top of the
+library, and folders nest. Moving never changes a mockup's uuid, so renders,
+webhooks and integrations keep working against the uuid they already hold.
+Every call here is free.
+
+```typescript
+// List folders, by name. 'root' lists the ones at the top of the library,
+// a uuid lists the ones inside that folder, and leaving it out lists them all
+const { folders, total } = await client.folders.list({ parentUuid: 'root' })
+
+// Create one, at the top of the library or inside another folder
+const folder = await client.folders.create({ name: 'Frames' })
+const child = await client.folders.create({
+  name: '8x10',
+  parentUuid: folder.uuid,
+})
+
+// Read the trail above a folder and what it holds at any depth
+const detail = await client.folders.get(folder.uuid)
+console.log(detail.path, detail.totalPsdMockupCount)
+
+// Rename it, move it, or both. parentUuid null is the top of the library,
+// and a field left out is left alone
+await client.folders.update(child.uuid, { name: 'Frames 8x10' })
+await client.folders.update(child.uuid, { parentUuid: null })
+
+// Move any mix of mockups and folders in one call. All of it moves or none
+await client.folders.move({
+  targetFolderUuid: folder.uuid,
+  psdMockupUuids: ['mockup-uuid'],
+  photoMockupUuids: [],
+  folderUuids: [],
+})
+
+// Delete. An empty folder goes on its own; a full one needs recursive,
+// which also deletes the mockups inside it and cannot be undone
+const gone = await client.folders.delete(folder.uuid, { recursive: true })
+console.log(gone.deletedFolders, gone.deletedPsdMockups)
+```
+
+A name has to be unique among the folders beside it, whatever the
+capitalisation, so the same `create` call can safely be made twice. Read the
+folder first to tell someone what a recursive delete would remove: the
+`total` counts on `get` are exactly those numbers.
 
 ### Account
 
@@ -812,6 +866,12 @@ The SDK is written in TypeScript with full type definitions for all methods and 
 ```typescript
 import SudoMock, {
   type Mockup,
+  type UpdateMockupParams,
+  type Folder,
+  type FolderDetail,
+  type FolderListResult,
+  type MoveToFolderParams,
+  type MoveToFolderResult,
   type SmartObject,
   type TextLayer,
   type TextLayerInput,
