@@ -131,7 +131,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   sizing answer (`coverage`, `fit`, or `width` and `height`) is one tile. A
   tile without a size is refused with 422. A request without `tile` is sent as
   before.
-- A photo mockup's surfaces carry `label`, what was detected there, such as
+- A photo mockup's surfaces carry `label`, what the surface is, such as
   `wall` or `pillow`.
 
 ## [2.11.0] - 2026-10-06
