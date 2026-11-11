@@ -14,7 +14,11 @@ export default defineConfig({
   dts: true,
   clean: true,
   splitting: false,
-  sourcemap: true,
+  // No source maps in the published package. A map's sourcesContent carries
+  // every source file whole, comments and all, so the tarball would publish
+  // the TypeScript sources as a side effect of every release. The bundle is
+  // not minified, so a stack trace stays readable without one.
+  sourcemap: false,
   minify: false,
   target: 'node20',
   outDir: 'dist',
