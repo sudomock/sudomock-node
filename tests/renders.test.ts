@@ -144,7 +144,7 @@ describe('renders.create()', () => {
     expect(Object.keys(asset)).not.toContain('removeBackground')
   })
 
-  it('sends text-only personalization and returns warnings without diagnostics', async () => {
+  it('sends text-only personalization and returns the advisories the API sent', async () => {
     let capturedBody: Record<string, unknown> = {}
     server.use(
       http.post(`${TEST_BASE_URL}/api/v1/renders`, async ({ request }) => {
@@ -167,7 +167,7 @@ describe('renders.create()', () => {
             { code: 'TEXT_FIT_SHRUNK', message: 'Text was resized to fit.' },
             {
               code: 'ADVISORY_X',
-              message: 'Private model prompt failed for x_field_a.',
+              message: 'internal diagnostic',
             },
           ],
         })
@@ -216,8 +216,8 @@ describe('renders.create()', () => {
     expect(result).not.toHaveProperty('textLayers')
     expect(result.warnings?.[0]?.code).toBe('TEXT_FIT_SHRUNK')
     expect(result.warnings?.[1]).toEqual({
-      code: 'PROCESSING_FAILED',
-      message: 'The request completed with an advisory.',
+      code: 'ADVISORY_X',
+      message: 'internal diagnostic',
     })
   })
 
@@ -286,7 +286,7 @@ describe('ai.render() — 2D mockup', () => {
     expect(result.printFiles[0]!.exportFormat).toBe('png')
     expect(result).not.toHaveProperty('xFieldA')
     expect(result).not.toHaveProperty('model')
-    expect(result.printFiles[0]).not.toHaveProperty('privateStorageKey')
+    expect(result.printFiles[0]).not.toHaveProperty('xFieldE')
   })
 
   it('posts the 2D render body in snake_case to /photo-mockups/{id}/render (id in path, not body)', async () => {
@@ -1032,7 +1032,7 @@ describe('uploads.create()', () => {
     expect(result.textLayers[0]!.name).toBe('Customer Name')
     expect(result.warnings?.[0]?.code).toBe('PSD_HIDDEN_SMART_OBJECTS')
     expect(result).not.toHaveProperty('model')
-    expect(result).not.toHaveProperty('prompt')
+    expect(result).not.toHaveProperty('xFieldF')
     expect(result.smartObjects[0]).not.toHaveProperty('xFieldA')
   })
 

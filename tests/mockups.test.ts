@@ -32,7 +32,7 @@ describe('mockups.list()', () => {
     expect(mockup.textLayers[0]!.fontPostscriptName).toBe('Montserrat-Bold')
     expect(mockup.textLayers[0]!.isEditable).toBe(true)
     expect(mockup).not.toHaveProperty('model')
-    expect(mockup).not.toHaveProperty('prompt')
+    expect(mockup).not.toHaveProperty('xFieldF')
     expect(mockup.smartObjects[0]).not.toHaveProperty('xFieldA')
     expect(mockup.textLayers[0]).not.toHaveProperty('resolvedFont')
   })

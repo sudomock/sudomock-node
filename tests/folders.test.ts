@@ -20,7 +20,7 @@ describe('folders.list()', () => {
     expect(folder.parentUuid).toBeNull()
     expect(folder.psdMockupCount).toBe(12)
     expect(folder.photoMockupCount).toBe(4)
-    expect(folder).not.toHaveProperty('privateStorageKey')
+    expect(folder).not.toHaveProperty('xFieldE')
   })
 
   it('sends parentUuid, limit and offset, and leaves out what was not asked for', async () => {
@@ -90,7 +90,7 @@ describe('folders.get()', () => {
       { uuid: '9e3b6c14-27af-4d58-b0e1-5c8a2f9d7340', name: 'My mockups' },
     ])
     expect(folder.totalPsdMockupCount).toBe(31)
-    expect(folder).not.toHaveProperty('privateStorageKey')
+    expect(folder).not.toHaveProperty('xFieldE')
   })
 })
 

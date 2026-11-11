@@ -156,24 +156,24 @@ describe('jobs.retrieve()', () => {
     expect(job).not.toHaveProperty('model')
   })
 
-  it('drops engine diagnostics from job outcomes', async () => {
+  it('carries only the documented job fields', async () => {
     server.use(
       http.get(`${TEST_BASE_URL}/api/v1/jobs/:uuid`, () =>
         HttpResponse.json({
           ...MOCK_JOB_SUCCEEDED_RESPONSE,
           data: {
             ...MOCK_JOB_SUCCEEDED_RESPONSE.data,
-            model: 'value-g',
-            prompt: 'private instruction',
-            x_field_a: 'private-surface',
+            x_field_g: 'value-g',
+            x_field_f: 'value-f',
+            x_field_a: 'value-a',
           },
         }),
       ),
     )
 
     const job = await createClient().jobs.retrieve(ASYNC_UUID)
-    expect(job).not.toHaveProperty('model')
-    expect(job).not.toHaveProperty('prompt')
+    expect(job).not.toHaveProperty('xFieldG')
+    expect(job).not.toHaveProperty('xFieldF')
     expect(job).not.toHaveProperty('xFieldA')
   })
 
@@ -315,9 +315,7 @@ describe('jobs.waitForJob()', () => {
     const client = createClient()
     const job = await client.jobs.waitForJob(ASYNC_UUID, { intervalMs: 5 })
     expect(job.status).toBe('failed')
-    expect(job.error).toBe(
-      'Processing failed. Retry or contact support with the job ID.',
-    )
+    expect(job.error).toBe('The render could not be completed.')
   })
 
   it('throws TimeoutError when the job never finishes', async () => {

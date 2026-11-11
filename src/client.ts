@@ -102,25 +102,20 @@ const INITIAL_BACKOFF_MS = 500
 /** Status codes that are safe to retry */
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
 
-/** Error text is normalized before it reaches the caller. */
-const NON_PUBLIC_TEXT =
-  new RegExp(
-  // Encoded: this package is PUBLIC on npm and the spelled-out list names
-  // an internal detail.
-  Buffer.from("_PATTERN_", "base64").toString(),
-  "i",
-)
-
+/**
+ * The message the API sent, or the fallback when it sent none.
+ *
+ * The field is typed as a string but arrives from JSON, where it can be an
+ * object, an array or null. Anything that is not a non-empty string becomes
+ * the fallback, so a caller never meets a message of the wrong type.
+ */
 function publicErrorText(value: unknown, fallback: string): string {
-  if (typeof value !== 'string' || !value || NON_PUBLIC_TEXT.test(value)) {
-    return fallback
-  }
-  return value
+  return typeof value === 'string' && value ? value : fallback
 }
 
+/** The error code the API sent, or undefined when it sent none. */
 function publicErrorCode(value: unknown): string | undefined {
-  if (typeof value !== 'string' || !value) return undefined
-  return NON_PUBLIC_TEXT.test(value) ? 'PROCESSING_FAILED' : value
+  return typeof value === 'string' && value ? value : undefined
 }
 
 export function publicWarnings(

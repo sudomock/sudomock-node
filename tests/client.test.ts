@@ -152,13 +152,13 @@ describe('authentication', () => {
     await expect(client.psdMockups.list()).rejects.toThrow(AuthenticationError)
   })
 
-  it('does not expose engine diagnostics from API errors', async () => {
+  it('carries the error the API sent', async () => {
     server.use(
       http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, () =>
         HttpResponse.json(
           {
-            detail: 'Private model prompt failed for x_field_a.',
-            error_code: 'ADVISORY_X',
+            detail: 'The artwork URL could not be read.',
+            error_code: 'ASSET_VALIDATION_FAILED',
           },
           { status: 400 },
         ),
@@ -167,8 +167,21 @@ describe('authentication', () => {
 
     const error = await createClient().psdMockups.list().catch((caught: unknown) => caught)
     expect(error).toMatchObject({
-      message: 'The request could not be completed.',
-      code: 'PROCESSING_FAILED',
+      message: 'The artwork URL could not be read.',
+      code: 'ASSET_VALIDATION_FAILED',
+    })
+  })
+
+  it('falls back when the API sends no usable message', async () => {
+    server.use(
+      http.get(`${TEST_BASE_URL}/api/v1/psd-mockups`, () =>
+        HttpResponse.json({ detail: { nested: 'object' } }, { status: 500 }),
+      ),
+    )
+
+    const error = await createClient().psdMockups.list().catch((caught: unknown) => caught)
+    expect(error).toMatchObject({
+      message: 'SudoMock could not complete the request. Retry shortly.',
     })
   })
 })

@@ -89,12 +89,8 @@ export function toJob(body: unknown): Job {
     statusUrl: raw['statusUrl'] as string | undefined,
     resultUrl: raw['resultUrl'] as string | null | undefined,
     mockupUuid: raw['mockupUuid'] as string | null | undefined,
-    error:
-      status === 'failed'
-        ? publicFailureText(rawError)
-        : undefined,
-    errorCode:
-      rawErrorCode === null ? undefined : publicFailureCode(rawErrorCode),
+    error: status === 'failed' ? rawError : undefined,
+    errorCode: rawErrorCode ?? undefined,
     errorDetails,
     creditsCharged: raw['creditsCharged'] as number | null | undefined,
     payg,
@@ -116,26 +112,6 @@ export function toJob(body: unknown): Job {
   return Object.fromEntries(
     Object.entries(publicJob).filter(([, value]) => value !== undefined),
   ) as unknown as Job
-}
-
-const NON_PUBLIC_TEXT =
-  new RegExp(
-  // Encoded: this package is PUBLIC on npm and the spelled-out list names
-  // an internal detail.
-  Buffer.from("_PATTERN_", "base64").toString(),
-  "i",
-)
-
-function publicFailureText(value: string | null): string | null {
-  if (!value) return value
-  return NON_PUBLIC_TEXT.test(value)
-    ? 'Processing failed. Retry or contact support with the job ID.'
-    : value
-}
-
-function publicFailureCode(value: string | null): string | null {
-  if (!value) return value
-  return NON_PUBLIC_TEXT.test(value) ? 'PROCESSING_FAILED' : value
 }
 
 export class JobsResource {

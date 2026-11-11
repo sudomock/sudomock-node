@@ -17,14 +17,6 @@ import type {
  */
 const DEFAULT_TOLERANCE_SECONDS = 300
 
-const NON_PUBLIC_TEXT =
-  new RegExp(
-  // Encoded: this package is PUBLIC on npm and the spelled-out list names
-  // an internal detail.
-  Buffer.from("_PATTERN_", "base64").toString(),
-  "i",
-)
-
 function toWebhookDelivery(value: WebhookDelivery): WebhookDelivery {
   return {
     id: value.id,
@@ -34,10 +26,7 @@ function toWebhookDelivery(value: WebhookDelivery): WebhookDelivery {
     status: value.status,
     httpStatus: value.httpStatus,
     attempt: value.attempt,
-    lastError:
-      value.lastError && NON_PUBLIC_TEXT.test(value.lastError)
-        ? 'Delivery failed. Retry it or contact support with the delivery ID.'
-        : value.lastError,
+    lastError: value.lastError,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   }

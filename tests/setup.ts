@@ -33,7 +33,7 @@ export const MOCK_MOCKUP = {
       layer_name: 'Front Design',
       quad: null,
       blend_mode: 'normal',
-      x_field_a: 'private-surface',
+      x_field_a: 'value-a',
     },
   ],
   text_layers: [
@@ -61,8 +61,8 @@ export const MOCK_MOCKUP = {
   thumbnails: [
     { width: 720, url: 'https://cdn.sudomock.com/thumbs/720.webp' },
   ],
-  model: 'value-g',
-  prompt: 'private instruction',
+  x_field_g: 'value-g',
+  x_field_f: 'value-f',
 }
 
 export const MOCK_RENDER_RESPONSE = {
@@ -85,12 +85,12 @@ export const MOCK_AI_RENDER_RESPONSE = {
         export_path: 'https://cdn.sudomock.com/renders/sudoai/abc123.png',
         duration_ms: 2340,
         export_format: 'png',
-        private_storage_key: 'renders/private.png',
+        x_field_e: 'value-e1',
       },
     ],
     render_uuid: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    x_field_a: 'private-surface',
-    model: 'value-g',
+    x_field_a: 'value-a',
+    x_field_g: 'value-g',
   },
 }
 
@@ -101,7 +101,7 @@ export const MOCK_REMOVE_BACKGROUND_RESPONSE = {
     width: 1200,
     height: 1600,
     credits_charged: 5,
-    private_storage_key: 'cutouts/private.png',
+    x_field_e: 'value-e2',
   },
 }
 
@@ -126,7 +126,7 @@ export const MOCK_2D_MOCKUP = {
   version: 1,
   created_at: '2026-06-21T00:00:00Z',
   updated_at: '2026-06-21T00:00:00Z',
-  x_field_b: 'https://private.example/mask.png',
+  x_field_b: 'https://example.invalid/b',
   x_field_c: 3,
   x_field_d: [[0, 0]],
 }
@@ -279,7 +279,7 @@ export const MOCK_FOLDER = {
   created_at: '2026-11-08T10:00:00Z',
   updated_at: '2026-11-08T10:00:00Z',
   // Never published, so the resource must not pass it through.
-  private_storage_key: 'private/folders/frames',
+  x_field_e: 'value-e3',
 }
 
 export const handlers = [
