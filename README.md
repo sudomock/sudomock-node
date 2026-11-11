@@ -296,8 +296,8 @@ handing one the other's dial does not compile.
 target. The sizing answer (`coverage`, `fit`, or `width` and `height`) is one
 tile, and `position` with `offsetX` and `offsetY` sets where the grid starts.
 `tileSpacing` sets the gap between tiles, as on a PSD asset. Each entry in
-`mockup.surfaces` carries a `label`, what was detected there, such as `pillow`
-or `wall`, so you can tell surfaces apart before you pick one.
+`mockup.surfaces` carries a `label`, what the surface is, such as `pillow` or
+`wall`, so you can tell surfaces apart before you pick one.
 
 #### Render an existing 2D mockup
 

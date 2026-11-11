@@ -10,10 +10,10 @@ export class UploadsResource {
   constructor(private readonly client: HttpClient) {}
 
   /**
-   * Upload and process a PSD file from a URL.
+   * Upload a PSD file from a URL and get back a reusable mockup.
    *
-   * The API downloads the PSD, extracts layers and smart objects,
-   * and generates thumbnails.
+   * Resolves with the mockup, its smart objects, its text layers and its
+   * thumbnails.
    *
    * By default this blocks until processing finishes and resolves with the
    * {@link UploadResult}. Pass `isAsync: true` to process in the background:

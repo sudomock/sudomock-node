@@ -339,7 +339,7 @@ export interface AdjustmentLayers {
   saturation?: number
   /** Vibrance adjustment (-100 to 100, default 0). */
   vibrance?: number
-  /** Gaussian blur (0 to 100, default 0). */
+  /** Softens the artwork, 0 for sharp to 100 for the strongest blur (default 0). */
   blur?: number
 }
 
@@ -457,7 +457,7 @@ export interface AIAdjustments {
   saturation?: number
   /** Vibrance adjustment. */
   vibrance?: number
-  /** Gaussian blur. */
+  /** Softens the artwork, from 0 for sharp to 100 for the strongest blur. */
   blur?: number
 }
 
@@ -684,7 +684,7 @@ export type Create2DMockupParams = {
   folderUuid?: string
   /**
    * Optional seed print areas (4-point quads, each with an optional `name`).
-   * When omitted SudoMock detects the print area(s) automatically.
+   * Omit it and SudoMock chooses the print areas.
    */
   printAreas?: readonly TwoDPrintAreaInput[]
   /**
@@ -749,7 +749,7 @@ export interface TwoDMockupQuad {
  */
 export interface TwoDFullSurface {
   surfaceUuid: string
-  /** What was detected on this surface, such as "wall" or "pillow". */
+  /** What the surface is, such as "wall" or "pillow". */
   label?: string | null
 }
 
