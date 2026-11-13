@@ -1,7 +1,7 @@
 {
   "name": "sudomock",
-  "version": "2.17.0",
-  "description": "Official Node.js/TypeScript SDK for the SudoMock API - mockup generation from PSD files",
+  "version": "2.18.0",
+  "description": "Official Node.js/TypeScript SDK for the SudoMock API - mockup generation from ready-made mockups, PSD files and product photos",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

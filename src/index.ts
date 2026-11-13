@@ -11,6 +11,7 @@ import { AccountResource } from './resources/account'
 import { StudioResource } from './resources/studio'
 import { JobsResource } from './resources/jobs'
 import { WebhooksResource } from './resources/webhooks'
+import { ReadyMadeMockupsResource } from './resources/readyMade'
 import type { SudoMockOptions } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.sudomock.com'
@@ -72,6 +73,12 @@ class SudoMock {
   readonly jobs: JobsResource
   /** Manage webhook endpoints and their deliveries */
   readonly webhooks: WebhooksResource
+  /**
+   * SudoMock's own catalogue of product scenes: search it and read one
+   * template. Free to read, and nothing in it needs a file of your own. Your
+   * account's own mockups are `psdMockups`, `photoMockups` and `folders`.
+   */
+  readonly readyMadeMockups: ReadyMadeMockupsResource
 
   // Backing objects for the earlier accessor names. They speak to the paths
   // those names were published on, so an upgrade alone never moves a caller's
@@ -105,6 +112,7 @@ class SudoMock {
     this.studio = new StudioResource(client)
     this.jobs = new JobsResource(client)
     this.webhooks = new WebhooksResource(client)
+    this.readyMadeMockups = new ReadyMadeMockupsResource(client)
 
     this.earlierPhotoMockups = new AIResource(client, EARLIER_PHOTO_MOCKUPS_PATH)
     this.earlierPsdMockups = new MockupsResource(client, EARLIER_PSD_MOCKUPS_PATH)
@@ -286,4 +294,10 @@ export type {
   ListDeliveriesParams,
   ListWebhookEventsParams,
   ReplayFailedResult,
+  ReadyMadeMockup,
+  ReadyMadeTemplate,
+  ReadyMadeTemplateDetail,
+  ReadyMadeTemplatePage,
+  ReadyMadeSortField,
+  SearchReadyMadeParams,
 } from './types'

@@ -1767,6 +1767,140 @@ export interface ConsumeStudioActionResult {
 }
 
 // ---------------------------------------------------------------------------
+// Ready-made mockups (SudoMock's own catalogue, free to read)
+// ---------------------------------------------------------------------------
+
+/**
+ * One view of a product scene, with the address to render from.
+ *
+ * Pass `sourceUrl` as `sourceUrl` to `client.photoMockups.create()` and the
+ * view becomes a reusable mockup on your account.
+ */
+export interface ReadyMadeMockup {
+  /** What this view is called, such as "Flat Lay" or "Lifestyle Scene". */
+  name: string
+  /** The kind of view, such as `flat-lay-overhead` or `lifestyle-scene`. */
+  view: string
+  /** Public image address of this view. */
+  sourceUrl: string
+}
+
+/**
+ * One product scene, with every view it holds.
+ *
+ * A mockup is one view of a scene; a template is the set of views of that
+ * scene. A search answers with templates, and each one carries its views, so
+ * one call is enough to pick what to render.
+ */
+export interface ReadyMadeTemplate {
+  /** The template's stable name, used to read it on its own. */
+  slug: string
+  /** Display title of the product scene. */
+  title: string
+  /** One or two sentences about the scene. */
+  description?: string | null
+  /** Top category, such as `apparel` or `drinkware`. */
+  category: string
+  /** Middle level, such as `t-shirts`. */
+  subcategory?: string | null
+  /** Narrowest level, such as `crewneck-short-sleeve`. */
+  productType?: string | null
+  /** Tags the template is filterable by. */
+  tags?: string[]
+  /** Whether the template is one SudoMock features. */
+  isFeatured?: boolean
+  /** How many views this template holds. */
+  mockupCount: number
+  /** Every view of the template, each with the address to render from. */
+  mockups?: ReadyMadeMockup[]
+}
+
+/** One template read on its own, with its long-form copy and every facet. */
+export interface ReadyMadeTemplateDetail extends ReadyMadeTemplate {
+  /** The scene described at length. */
+  longDescription?: string | null
+  /** What the scene offers, in short lines. */
+  features?: string[]
+  /** Style words, such as `minimal` or `lifestyle`. */
+  visualStyle?: string[]
+  /** Who the scene is meant for. */
+  targetAudience?: string[]
+  /** Storefronts and tools the scene suits. */
+  compatiblePlatforms?: string[]
+  /** Industries the scene suits. */
+  industries?: string[]
+  /** Uses the scene suits. */
+  useCases?: string[]
+  /** Seasons the scene suits. */
+  seasons?: string[]
+  /** When the template was published. */
+  publishedAt?: string | null
+}
+
+/** Which field a ready-made search is ordered by. */
+export type ReadyMadeSortField = 'published_at' | 'title'
+
+/** Params for `client.readyMadeMockups.search()`. */
+export interface SearchReadyMadeParams {
+  /**
+   * Free text matched against a template's title and description, so
+   * `'coffee mug'` or `'oversized tee'` both work. Leave it out to list the
+   * catalogue.
+   */
+  search?: string
+  /**
+   * Keep only one top category: `apparel`, `home-living`, `accessories`,
+   * `drinkware`, `signage-advertising`, `print-paper`, `packaging`,
+   * `branding`.
+   */
+  category?: string
+  /** Keep only one subcategory, the middle level, such as `t-shirts`. */
+  subcategory?: string
+  /**
+   * Keep only one product type, the narrowest level, such as
+   * `crewneck-short-sleeve`.
+   */
+  productType?: string
+  /** Keep only templates carrying these tags. */
+  tags?: string[]
+  /**
+   * Keep only templates marked for these storefronts or automation tools,
+   * such as `etsy`, `shopify`, `woocommerce`, `zapier`, `make` or `n8n`.
+   */
+  platforms?: string[]
+  /** Keep only templates marked for these industries. */
+  industries?: string[]
+  /** Keep only templates marked for these use cases. */
+  useCases?: string[]
+  /** Keep only the templates SudoMock features, or only the rest. */
+  isFeatured?: boolean
+  /** Which page of results to return, counting from 1. */
+  page?: number
+  /** Templates per page, 1 to 100. */
+  limit?: number
+  /** Which field the results are ordered by. */
+  sortBy?: ReadyMadeSortField
+  /** Order: `desc` (default) or `asc`. */
+  sortOrder?: 'asc' | 'desc'
+}
+
+/** One page of `client.readyMadeMockups.search()`. */
+export interface ReadyMadeTemplatePage {
+  /** The templates on this page. */
+  templates: ReadyMadeTemplate[]
+  /** How many templates match the filters, across every page. */
+  totalTemplates: number
+  /** How many views those templates hold between them, across every page. */
+  totalMockups: number
+  /** Which page this is, counting from 1. */
+  page: number
+  /** How many templates one page carries. */
+  limit: number
+  /** How many pages the filters match. */
+  pages: number
+}
+
+// ---------------------------------------------------------------------------
 // API Envelope
 // ---------------------------------------------------------------------------
 

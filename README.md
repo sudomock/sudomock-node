@@ -1,6 +1,6 @@
 # SudoMock Node.js SDK
 
-Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Generate product mockups from Photoshop PSD files, or from a product photo without any PSD.
+Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Start from a free library of 6,870 ready-made mockups, or bring your own Photoshop file or product photo, and get the finished image back.
 
 ## Installation
 
@@ -275,6 +275,63 @@ const job = await client.renders.createVideo({
   webhook: { url: 'https://example.com/hooks/sudomock' },
 })
 ```
+
+### Ready-Made Mockups (`client.readyMadeMockups`)
+
+SudoMock's free library of ready-made mockups is a catalogue of product scenes
+that needs no file of your own. Reading it is free, and every scene in it is
+free to start from. A **mockup** is one view of a scene (front, folded, flat
+lay, lifestyle, close-up) and a **template** is the set of views of that scene,
+so a search answers with templates and each one carries its views with the
+address to render from.
+
+This is SudoMock's catalogue, not your account's own mockups: those are
+`client.psdMockups`, `client.photoMockups` and `client.folders`.
+
+The four steps, in the order the
+[guide](https://sudomock.com/docs/guides/start-from-a-ready-made-template)
+uses them:
+
+```ts
+// 1. Search the catalogue.
+const { templates, totalMockups } = await client.readyMadeMockups.search({
+  search: 'coffee mug',
+  category: 'drinkware',
+  limit: 5,
+})
+
+// 2. Read one template for its long-form copy and every facet.
+const template = await client.readyMadeMockups.getTemplate(templates[0]!.slug)
+
+// 3. Hand the view you picked to photo mockup creation.
+const view = template.mockups![0]!
+const mockup = await client.photoMockups.create({ sourceUrl: view.sourceUrl })
+
+// 4. Render your own artwork onto it.
+const surface = mockup.surfaces[0]
+if (!surface) throw new Error('No surface available')
+
+const result = await client.photoMockups.render({
+  mockupId: mockup.mockupId,
+  printAreas: [{
+    surfaceUuid: surface.surfaceUuid,
+    artworkUrl: 'https://example.com/artwork.png',
+    placement: { coverage: 60 },
+  }],
+})
+console.log(result.url)
+```
+
+Steps 1 and 2 cost nothing. Step 3 makes the view a reusable mockup on your
+account, and step 4 renders it; both are priced in
+[Pricing in one paragraph](#pricing-in-one-paragraph).
+
+Filters on `search()`: `search` (free text over title and description),
+`category`, `subcategory`, `productType`, `tags`, `platforms`, `industries`,
+`useCases`, `isFeatured`, plus `page`, `limit`, `sortBy` and `sortOrder`. An
+array filter is sent as one comma-separated value; leave a filter out and it
+is not sent at all. The page carries `totalTemplates`, `totalMockups`, `page`,
+`limit` and `pages`.
 
 ### Photo Mockups (`client.photoMockups`)
 

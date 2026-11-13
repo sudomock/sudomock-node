@@ -5,6 +5,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-11-13
+
+### Added
+- `client.readyMadeMockups` reads SudoMock's free library of ready-made
+  mockups. `search()` answers with templates, each carrying its views and the
+  address to render from; `getTemplate(slug)` reads one with its long-form
+  copy. Hand a view's `sourceUrl` to `client.photoMockups.create()`.
+- `ReadyMadeMockup`, `ReadyMadeTemplate`, `ReadyMadeTemplateDetail`,
+  `ReadyMadeTemplatePage`, `ReadyMadeSortField` and `SearchReadyMadeParams`.
+
 ## [2.17.0] - 2026-11-11
 
 ### Changed
