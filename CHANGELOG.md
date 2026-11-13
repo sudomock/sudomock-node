@@ -5,6 +5,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.18.1] - 2026-11-13
+
+### Changed
+- The ready-made library count reads as a floor, not an exact figure.
+
 ## [2.18.0] - 2026-11-13
 
 ### Added

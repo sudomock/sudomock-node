@@ -1,6 +1,6 @@
 # SudoMock Node.js SDK
 
-Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Start from a free library of 6,870 ready-made mockups, or bring your own Photoshop file or product photo, and get the finished image back.
+Official Node.js/TypeScript SDK for the [SudoMock API](https://sudomock.com/docs). Start from a free library of 6,800+ ready-made mockups, or bring your own Photoshop file or product photo, and get the finished image back.
 
 ## Installation
 
